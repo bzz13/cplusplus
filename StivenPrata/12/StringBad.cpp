@@ -19,7 +19,7 @@ StringBad::StringBad(const char * s)
 StringBad::StringBad ()								// конструктор по умолчанию
 {
 	len = 4;
-	str = new char [4] ;
+	str = new char[4] ;
 	std::strcpy(str, "C++");						// строка по умолчанию
 	num_strings++;
 	cout << num_strings << ": \"" << str
@@ -27,7 +27,12 @@ StringBad::StringBad ()								// конструктор по умолчанию
 }
 StringBad::StringBad(const StringBad& sb)
 {
-	cout << "copy!" << std::endl;
+	len = sb.len;
+	str = new char[len+1];
+	std::strcpy(str, sb.str);
+	num_strings++;
+	cout << num_strings << ": \"" << str
+	     << "\" copy object created\n";			// для целей отладки
 }
 
 StringBad::~StringBad()								// необходимый деструктор
@@ -36,6 +41,19 @@ StringBad::~StringBad()								// необходимый деструктор
 	--num_strings;									// является обязательным
 	cout << num_strings << " left\n";				// для целей отладки
 	delete [] str;									// является обязательным
+}
+
+StringBad& StringBad::operator= (const StringBad& sb)
+{
+	if (this != &sb)
+	{
+		cout << "operator= was called: replace \"" << str << "\" with \"" << sb.str << "\"\n";
+		delete[] str;
+		len = sb.len;
+		str = new char[len+1];
+		std::strcpy(str, sb.str);
+	}
+	return *this;
 }
 
 std::ostream & operator<<(std::ostream & os, const StringBad & st)

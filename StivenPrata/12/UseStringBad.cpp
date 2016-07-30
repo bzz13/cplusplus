@@ -25,6 +25,8 @@ int main()
 		cout << "test rvo" << endl;
 		StringBad sb = generate("generated string");
 		cout << "destructors will be auto call" << endl;
+		StringBad other;
+		other = sb;
 	}
 	return 0;
 	// {

@@ -14,6 +14,8 @@ public:
 	~StringBad();				//деструктор
 	StringBad(const StringBad& sb);
 
+	StringBad& operator= (const StringBad&);
+
 	//Дружественная функция
 	friend std::ostream & operator<< (std::ostream & os, const StringBad & st);
 };
