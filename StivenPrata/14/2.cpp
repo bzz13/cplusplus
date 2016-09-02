@@ -3,22 +3,20 @@
 #include <utility>
 #include <string>
 
-typedef std::valarray<int> ArrayInt;
-typedef std::pair<ArrayInt, ArrayInt> PairArray;
+using namespace std;
 
-class Wine: private std::string, private PairArray
+typedef valarray<int> ArrayInt;
+typedef pair<ArrayInt, ArrayInt> PairArray;
+
+class Wine: private string, private PairArray
 {
 public:
-	Wine(): std::string("noname wine") { };
-	Wine(const char * l, int y, const int yr[], const int bot[]) : std::string(l), PairArray(ArrayInt(yr, y), ArrayInt(bot, y)) { };
-	Wine(const char * l, int y): std::string(l), PairArray(ArrayInt(y), ArrayInt(y)) { };
+	Wine(): string("noname wine") { };
+	Wine(const char * l, int y, const int yr[], const int bot[]) : string(l), PairArray(ArrayInt(yr, y), ArrayInt(bot, y)) { };
+	Wine(const char * l, int y): string(l), PairArray(ArrayInt(y), ArrayInt(y)) { };
 	~Wine() { };
 
 	void GetBottles() {
-		using std::cout;
-		using std::cin;
-		using std::endl;
-
 		PairArray & bottles = (PairArray &) *this;
 		int count = bottles.first.size();
 		cout << "Enter " << Label() << " data for " << count << " year(s): " << endl;
@@ -30,8 +28,8 @@ public:
 			cin >> bottles.second[i];
 		}
 	}
-	const std::string & Label() const {
-		return (std::string &) *this;
+	const string & Label() const {
+		return (string &) *this;
 	};
 	int Sum() const {
 		auto bottles = (PairArray) *this;
@@ -41,9 +39,7 @@ public:
 		return result;
 	};
 	void Show() const{
-		using std::cout;
-		using std::endl;
-
+				
 		auto bottles = (PairArray) *this;
 		cout << "Wine: " << Label() << endl
 			 << "\tYear\tBottels" << endl;
@@ -55,10 +51,6 @@ public:
 
 int main()
 {
-	using std::cin;
-	using std::cout;
-	using std::endl;
-
 	// Wine defaultWine;
 	// cout << defaultWine.Sum() << endl;
 	// defaultWine.Show();
@@ -82,7 +74,7 @@ int main()
 	int y[YRS] = {1993, 1995, 1998};
 	int b[YRS] = { 48, 60, 72};
 
-	Wine more("Gushing Grape Red",YRS, y, b);
+	Wine more("Gushing Grape Red", YRS, y, b);
 	more.Show();
 	cout << "Total bottles for " << more.Label() // используется метод Label()
 		 << ": " << more.Sum() << endl; // используется метод Sum()
