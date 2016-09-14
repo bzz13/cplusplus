@@ -39,7 +39,6 @@ public:
 		return result;
 	};
 	void Show() const{
-				
 		auto bottles = (PairArray) *this;
 		cout << "Wine: " << Label() << endl
 			 << "\tYear\tBottels" << endl;
