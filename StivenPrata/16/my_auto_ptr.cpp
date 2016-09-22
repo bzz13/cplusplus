@@ -42,6 +42,7 @@ public:
 		release();
 		pt = new T(*(p.pt));
 		cout << "\tnew loc: " << pt << endl;
+		return *this;
 	}
 	my_auto_ptr<T>& operator=(T* p)
 	{
@@ -49,6 +50,7 @@ public:
 		release();
 		pt = p;
 		cout << "\tnew loc: " << pt << endl;
+		return *this;
 	}
 
 	T& operator*()
@@ -90,6 +92,8 @@ int main()
 		my_auto_ptr<string> p1(new string("world"));
 		cout << "values: " << *p << " " << *p1 << endl;
 		p = new string("wonderful");
+		cout << "values: " << *p << " " << *p1 << endl;
+		p = p1 = new string("fuck");
 		cout << "values: " << *p << " " << *p1 << endl;
 	}
 	return 0;
