@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <exception>
+
 using namespace std;
 
 template<typename T>
@@ -38,6 +40,8 @@ public:
 
 	my_auto_ptr<T>& operator=(const my_auto_ptr<T>& p)
 	{
+		if (this == &p)
+			return *this;
 		cout << "operator=(<T>&) " << p.pt << " to " << pt << endl;
 		release();
 		pt = new T(*(p.pt));
@@ -112,10 +116,16 @@ int main()
 	}
 	{
 		cout << endl;
-		my_auto_ptr<tc> p(new tc(23));
+		my_auto_ptr<tc> p = new tc(23);
 		cout << p->Val() << endl;
 		p = new tc(54);
 		cout << p->Val() << endl;
 	}
+	{
+		cout << endl;
+		my_auto_ptr<int> p(new int(1));
+		p = p;
+	}
+
 	return 0;
 }
