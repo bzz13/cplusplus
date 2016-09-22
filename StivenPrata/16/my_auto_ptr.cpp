@@ -58,6 +58,20 @@ public:
 		cout << "operator*" << endl;
 		return *pt;
 	}
+
+	const T* const operator->()
+	{
+		cout << "operator->" << endl;
+		return pt;
+	}
+};
+
+class tc
+{
+	int val;
+public:
+	tc(int v): val(v) { };
+	int Val() const { return val; }
 };
 
 int main()
@@ -95,6 +109,13 @@ int main()
 		cout << "values: " << *p << " " << *p1 << endl;
 		p = p1 = new string("fuck");
 		cout << "values: " << *p << " " << *p1 << endl;
+	}
+	{
+		cout << endl;
+		my_auto_ptr<tc> p(new tc(23));
+		cout << p->Val() << endl;
+		p = new tc(54);
+		cout << p->Val() << endl;
 	}
 	return 0;
 }
