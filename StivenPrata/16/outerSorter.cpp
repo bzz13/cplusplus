@@ -29,8 +29,8 @@ class outerSorter
 
 	class writer
 	{
-
 		ofstream os;
+		writer(const writer&);
 	public:
 		writer(const string& name) { os.open(name, ofstream::out); }
 		~writer() { os.close(); }
