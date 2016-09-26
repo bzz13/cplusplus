@@ -14,14 +14,38 @@ class outerSorter
 {
 	int partsCounter;
 
+	class reader
+	{
+		ifstream is;
+		istream_iterator<T> iter;
+		istream_iterator<T> eos;
+	public:
+		reader(const string& name) { is.open(name); iter = istream_iterator<T>(is); }
+		~reader() { is.close(); }
+		bool hasNext() const { return iter != eos; }
+		const T& current() const { return *iter; }
+		void readNext() { ++iter; }
+	};
+
+	class writer
+	{
+
+		ofstream os;
+	public:
+		writer(const string& name) { os.open(name, ofstream::out); }
+		~writer() { os.close(); }
+		void write(const T& t) { os << t << endl; }
+		void write(const vector<T>& v) {
+			ostream_iterator<T> out_it (os, "\n");
+			copy(v.begin(), v.end(), out_it);
+		}
+	};
+
 	string writePartToFile(const vector<T>& part)
 	{
 		string ofstreamName(to_string(++partsCounter) + ".txt");
-		ofstream os;
-		os.open(ofstreamName, ofstream::out);
-		ostream_iterator<T> out_it (os, "\n");
-		copy(part.begin(), part.end(), out_it);
-		os.close();
+		writer wr(ofstreamName);
+		wr.write(part);
 		return ofstreamName;
 	}
 
@@ -54,40 +78,32 @@ class outerSorter
 
 	string mergeTwoParts(const string& partName1, const string& partName2)
 	{
-		ifstream is1; is1.open(partName1);
-		ifstream is2; is2.open(partName2);
+		reader r1(partName1);
+		reader r2(partName2);
 
 		string mergedPartName(to_string(++partsCounter) + ".txt");
-		ofstream os;
-		os.open(mergedPartName);
+		writer wr(mergedPartName);
 
-		istream_iterator<T> iter1(is1);
-		istream_iterator<T> iter2(is2);
-		istream_iterator<T> eos;
-
-		while(iter1 != eos && iter2 != eos)
+		while(r1.hasNext() && r2.hasNext())
 		{
-			if (*iter1 < *iter2)
+			if (r1.current() < r2.current())
 			{
-				os << *iter1 << endl;
-				++iter1;
+				wr.write(r1.current());
+				r1.readNext();
 			}
 			else
 			{
-				os << *iter2 << endl;
-				++iter2;
+				wr.write(r2.current());
+				r2.readNext();
 			}
 		}
-		auto iter = iter1 != eos ? iter1 : iter2;
-		while(iter != eos)
+		reader* r = r1.hasNext() ? &r1 : &r2;
+		while(r->hasNext())
 		{
-			os << *iter << endl;
-			++iter;
+			wr.write(r->current());
+			r->readNext();
 		}
 
-		is1.close();
-		is2.close();
-		os.close();
 		remove(partName1.c_str());
 		remove(partName2.c_str());
 
@@ -110,23 +126,6 @@ class outerSorter
 
 	string joinOrderedPartsWithPriorityQueue(const vector<string>& partNames)
 	{
-		class reader
-		{
-			ifstream is;
-			istream_iterator<T> iter;
-			istream_iterator<T> eos;
-		public:
-			reader(const string& name) { is.open(name); iter = istream_iterator<T>(is); }
-			~reader() { is.close(); }
-			bool hasNext() const { return iter != eos; }
-			const T& current() const { return *iter; }
-			void readNext() { ++iter; }
-		};
-
-		string ofstreamName(to_string(++partsCounter) + ".txt");
-		ofstream os;
-		os.open(ofstreamName, ofstream::out);
-
 		struct LessThanByCurrent
 		{
 			bool operator()(const reader* lhs, const reader* rhs) const
@@ -139,12 +138,14 @@ class outerSorter
 		for(auto partName: partNames)
 			pq.push(new reader(partName));
 
+		string ofstreamName(to_string(++partsCounter) + ".txt");
+		writer wr(ofstreamName);
 		while(!pq.empty())
 		{
 			auto topReader = pq.top(); pq.pop();
 			if (topReader->hasNext())
 			{
-				os << topReader->current() << endl;
+				wr.write(topReader->current());
 				topReader->readNext();
 				pq.push(topReader);
 			}
@@ -153,8 +154,6 @@ class outerSorter
 				delete topReader;
 			}
 		}
-
-		os.close();
 
 		for(auto partName: partNames)
 			remove(partName.c_str());
@@ -167,8 +166,8 @@ public:
 	{
 		partsCounter = 0;
 		return
-			// joinOrderedParts(
-			joinOrderedPartsWithPriorityQueue(
+			joinOrderedParts(
+			// joinOrderedPartsWithPriorityQueue(
 				splitIntoOrderedParts(inFilepath, max));
 	}
 };
@@ -176,5 +175,5 @@ public:
 int main()
 {
 	outerSorter<int> sorter;
-	cout << sorter.sort("input.txt");
+	cout << sorter.sort("input.txt", 4);
 }
