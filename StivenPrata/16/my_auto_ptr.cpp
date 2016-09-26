@@ -29,7 +29,8 @@ public:
 	{
 		cout << "copy ctor: " << p.pt << " to " << pt << endl;
 		release();
-		pt = new T(*(p.pt));
+		if(p.pt != nullptr)
+			pt = new T(*(p.pt));
 		cout << "\tnew loc: " << pt << endl;
 	};
 	~my_auto_ptr()
@@ -44,7 +45,8 @@ public:
 			return *this;
 		cout << "operator=(<T>&) " << p.pt << " to " << pt << endl;
 		release();
-		pt = new T(*(p.pt));
+		if(p.pt != nullptr)
+			pt = new T(*(p.pt));
 		cout << "\tnew loc: " << pt << endl;
 		return *this;
 	}
@@ -125,6 +127,13 @@ int main()
 		cout << endl;
 		my_auto_ptr<int> p(new int(1));
 		p = p;
+	}
+	{
+		cout << endl;
+		my_auto_ptr<int> p1;
+		my_auto_ptr<int> p2(p1);
+		my_auto_ptr<int> p3;
+		p3 = p1;
 	}
 
 	return 0;
