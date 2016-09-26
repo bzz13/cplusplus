@@ -16,7 +16,7 @@ class reader
 	ifstream is;
 	istream_iterator<T> iter;
 	istream_iterator<T> eos;
-	reader(const reader&);
+	reader(const reader<T>&);
 public:
 	reader(const string& name) { is.open(name); iter = istream_iterator<T>(is); }
 	~reader() { is.close(); }
@@ -29,7 +29,7 @@ template<typename T>
 class writer
 {
 	ofstream os;
-	writer(const writer&);
+	writer(const writer<T>&);
 public:
 	writer(const string& name) { os.open(name, ofstream::out); }
 	~writer() { os.close(); }
