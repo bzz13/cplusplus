@@ -19,8 +19,8 @@ class outerSorter
 		string ofstreamName(to_string(++partsCounter) + ".txt");
 		ofstream os;
 		os.open(ofstreamName, ofstream::out);
-		for (auto p: part)
-			os << p << endl;
+		ostream_iterator<T> out_it (os, "\n");
+		copy(part.begin(), part.end(), out_it);
 		os.close();
 		return ofstreamName;
 	}
@@ -54,41 +54,35 @@ class outerSorter
 
 	string mergeTwoParts(const string& partName1, const string& partName2)
 	{
-		ifstream is1;
-		is1.open(partName1);
-		ifstream is2;
-		is2.open(partName2);
+		ifstream is1; is1.open(partName1);
+		ifstream is2; is2.open(partName2);
 
 		string mergedPartName(to_string(++partsCounter) + ".txt");
 		ofstream os;
 		os.open(mergedPartName);
 
-		T t1, t2;
+		istream_iterator<T> iter1(is1);
+		istream_iterator<T> iter2(is2);
+		istream_iterator<T> eos;
 
-		is1 >> t1;
-		is2 >> t2;
-		while(!is1.eof() && !is2.eof())
+		while(iter1 != eos && iter2 != eos)
 		{
-			if (t1 < t2)
+			if (*iter1 < *iter2)
 			{
-				os << t1 << endl;
-				is1 >> t1;
+				os << *iter1 << endl;
+				++iter1;
 			}
 			else
 			{
-				os << t2 << endl;
-				is2 >> t2;
+				os << *iter2 << endl;
+				++iter2;
 			}
 		}
-		while(!is1.eof())
+		auto iter = iter1 != eos ? iter1 : iter2;
+		while(iter != eos)
 		{
-			os << t1 << endl;
-			is1 >> t1;
-		}
-		while(!is2.eof())
-		{
-			os << t2 << endl;
-			is2 >> t2;
+			os << *iter << endl;
+			++iter;
 		}
 
 		is1.close();
@@ -118,14 +112,15 @@ class outerSorter
 	{
 		class reader
 		{
-			T val;
 			ifstream is;
+			istream_iterator<T> iter;
+			istream_iterator<T> eos;
 		public:
-			reader(const string& name) { is.open(name); is >> val; }
+			reader(const string& name) { is.open(name); iter = istream_iterator<T>(is); }
 			~reader() { is.close(); }
-			bool hasNext() const { return !is.eof(); }
-			const T& current() const { return val; }
-			void getNext() { is >> val; }
+			bool hasNext() const { return iter != eos; }
+			const T& current() const { return *iter; }
+			void readNext() { ++iter; }
 		};
 
 		string ofstreamName(to_string(++partsCounter) + ".txt");
@@ -146,12 +141,11 @@ class outerSorter
 
 		while(!pq.empty())
 		{
-			auto topReader = pq.top();
-			pq.pop();
+			auto topReader = pq.top(); pq.pop();
 			if (topReader->hasNext())
 			{
 				os << topReader->current() << endl;
-				topReader->getNext();
+				topReader->readNext();
 				pq.push(topReader);
 			}
 			else
