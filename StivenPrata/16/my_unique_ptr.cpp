@@ -61,7 +61,7 @@ public:
 
 	operator bool() const
 	{
-		return ptr != nullptr;
+		return ptr != nullptr && isOwner;
 	}
 
 	~my_unique_ptr()
