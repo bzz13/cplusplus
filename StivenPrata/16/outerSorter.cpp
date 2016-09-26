@@ -166,8 +166,8 @@ public:
 	{
 		partsCounter = 0;
 		return
-			joinOrderedParts(
-			// joinOrderedPartsWithPriorityQueue(
+			// joinOrderedParts(
+			joinOrderedPartsWithPriorityQueue(
 				splitIntoOrderedParts(inFilepath, max));
 	}
 };
