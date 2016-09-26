@@ -64,8 +64,6 @@ public:
 		return *this;
 	}
 
-
-public:
 	list& for_each(void (*func)(node<T>* ptr_node))
 	{
 		auto tmp = head;
@@ -84,6 +82,18 @@ public:
 	{
 		func();
 		return *this;
+	}
+
+	T* find(const T& t) const
+	{
+		auto tmp = head;
+		while(tmp != nullptr)
+		{
+			if (tmp->value == t)
+				return &(tmp->value);
+			tmp = tmp->next;
+		}
+		return nullptr;
 	}
 };
 
@@ -115,7 +125,11 @@ int main()
 			.add("qwe")
 			.add("asd")
 			.for_each(print_node)
-			.chainCall(print_endl)
+			.chainCall(print_endl);
+
+		*(l.find("asd")) = "dsa";
+
+		l
 			.for_each_reverted_order(print_node)
 			.chainCall(print_endl);
 	}
