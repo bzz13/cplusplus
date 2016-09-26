@@ -101,6 +101,10 @@ int main()
 			p1 = p2;					// владение возвращено p1
 			cout << endl << "p1= " << p1 << "p2= "<< p2 << endl;
 			cout << "destroying p2..." << p2;
+			my_unique_ptr<Foo> p3;		// теперь p3 не владеет ничем
+			p3 = p1;					// теперь p3 владение Foo
+			p1 = p3;					// владение возвращено p1
+			cout << "destroying p3..." << p3;
 		}
 
 		if (p1)
