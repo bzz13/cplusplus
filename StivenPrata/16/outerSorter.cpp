@@ -167,18 +167,18 @@ class outerSorter
 	}
 
 public:
-	string sort(string inFilepath, int max = 10)
+	string sort(string inFilepath, const int& max = 10, const bool& usePriorityQueue = false )
 	{
 		partsCounter = 0;
-		return
-			// joinOrderedParts(
-			joinOrderedPartsWithPriorityQueue(
-				splitIntoOrderedParts(inFilepath, max));
+		auto parts = splitIntoOrderedParts(inFilepath, max);
+		return usePriorityQueue
+				? joinOrderedPartsWithPriorityQueue(parts)
+				: joinOrderedParts(parts);
 	}
 };
 
 int main()
 {
 	outerSorter<int> sorter;
-	cout << sorter.sort("input.txt", 4);
+	cout << sorter.sort("input.txt", 4, true);
 }
