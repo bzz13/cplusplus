@@ -54,7 +54,7 @@ public:
 
 	T& operator*() const
 	{
-		if (ptr != nullptr)
+		if (ptr != nullptr && isOwner)
 			return *ptr;
 		throw exception();
 	}
