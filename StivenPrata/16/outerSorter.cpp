@@ -19,9 +19,10 @@ class reader
 public:
 	reader(const string& name) { is.open(name); iter = istream_iterator<T>(is); }
 	~reader() { is.close(); }
-	bool hasNext() const { return iter != eos; }
 	const T& current() const { return *iter; }
 	void readNext() { ++iter; }
+	bool hasNext() const { return iter != eos; }
+	operator bool() const { return iter != eos; }
 };
 
 template<typename T>
@@ -40,11 +41,16 @@ public:
 };
 
 template<typename T>
-struct LessThanByCurrent
+class readerPtrComparer
 {
+	bool order;
+public:
+	readerPtrComparer(bool inverted = false): order(inverted) { }
 	bool operator()(const reader<T>* lhs, const reader<T>* rhs) const
 	{
-		return lhs->current() > rhs->current();
+		return order 
+			? lhs->current() > rhs->current()
+			: lhs->current() < rhs->current();
 	}
 };
 
@@ -63,28 +69,21 @@ class outerSorter
 
 	vector<string> splitIntoOrderedParts(const string& inFilepath, const int& max)
 	{
-		ifstream is;
-		is.open(inFilepath);
-
 		vector<string> partNames;
-		istream_iterator<T> iter(is);
-		istream_iterator<T> eos;
-
-		while(iter != eos)
+		reader<T> r(inFilepath);
+		while(r)
 		{
 			vector<T> part;
 			int count = 0;
-			while(count < max && iter != eos)
+			while(count < max && r)
 			{
-				part.push_back(*iter);
-				++ iter;
+				part.push_back(r.current());
+				r.readNext();
 				++ count;
 			}
 			std::sort(part.begin(), part.end());
 			partNames.push_back(writePartToFile(part));
 		}
-
-		is.close();
 		return partNames;
 	}
 
@@ -96,7 +95,7 @@ class outerSorter
 		string mergedPartName(to_string(++partsCounter) + ".txt");
 		writer<T> wr(mergedPartName);
 
-		while(r1.hasNext() && r2.hasNext())
+		while(r1 && r2)
 		{
 			if (r1.current() < r2.current())
 			{
@@ -109,8 +108,8 @@ class outerSorter
 				r2.readNext();
 			}
 		}
-		reader<T>* r = r1.hasNext() ? &r1 : &r2;
-		while(r->hasNext())
+		reader<T>* r = r1 ? &r1 : &r2;
+		while(*r)
 		{
 			wr.write(r->current());
 			r->readNext();
@@ -138,7 +137,7 @@ class outerSorter
 
 	string joinOrderedPartsWithPriorityQueue(const vector<string>& partNames)
 	{
-		priority_queue<reader<T>*, vector<reader<T>*>, LessThanByCurrent<T> > pq;
+		priority_queue<reader<T>*, vector<reader<T>*>, readerPtrComparer<T>> pq(readerPtrComparer<T>(true));
 		for(auto partName: partNames)
 			pq.push(new reader<T>(partName));
 
@@ -147,7 +146,7 @@ class outerSorter
 		while(!pq.empty())
 		{
 			auto topReader = pq.top(); pq.pop();
-			if (topReader->hasNext())
+			if (*topReader)
 			{
 				wr.write(topReader->current());
 				topReader->readNext();
