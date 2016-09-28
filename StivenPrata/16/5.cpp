@@ -24,10 +24,6 @@ int main()
 	cout << reduce(ldata, 10) << endl;
 
 	string sdata[] = {"asd", "cat", "bad", "asd", "sad"};
-	for_each(sdata, sdata + 5, [](const string& t){ cout << t << " ";} ); cout << endl;
-	sort(sdata, sdata + 5);
-	for_each(sdata, sdata + 5, [](const string& t){ cout << t << " ";} ); cout << endl;
-
-	cout << reduce(sdata, 10) << endl;
+	cout << reduce(sdata, 5) << endl;
 	return 0;
 }
