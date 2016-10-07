@@ -5,7 +5,6 @@
 
 namespace test
 {
-
 	using namespace std;
 
 	struct test
