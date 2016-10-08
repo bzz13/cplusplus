@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include <stdexcept>
+#include <iostream>
 
 template<typename T>
 class logger
@@ -14,6 +15,7 @@ class logger
 public:
 	logger(const 		char* path, bool restore = false);
 	logger(const std::string& path, bool restore = false);
+	~logger();
 
 	unsigned int maxIndex() const;
 
@@ -27,13 +29,11 @@ logger<T>::logger(const std::string& path, bool restore)
 {
 	if (restore)
 	{
+		f.open(path.c_str(), std::ios_base::in | std::ios_base::binary);
+		f.seekg(0, std::ios::end);
+		maxIdx = f.tellg() / sizeof(T);
+		f.close();
 		f.open(path.c_str(), std::ios_base::in | std::ios_base::out | std::ios_base::binary);
-		T tmp;
-		while(f.read((char*)&tmp, sizeof(T)))
-		{
-			++maxIdx;
-		}
-		f.clear();
 	}
 	else
 	{
@@ -44,6 +44,12 @@ logger<T>::logger(const std::string& path, bool restore)
 template<typename T>
 logger<T>::logger(const char* path, bool restore): logger(std::string(path), restore)
 {
+}
+
+template<typename T>
+logger<T>::~logger()
+{
+	f.close();
 }
 
 template<typename T>

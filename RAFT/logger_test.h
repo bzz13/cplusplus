@@ -7,14 +7,14 @@ namespace test
 {
 	using namespace std;
 
-	struct test
+	struct test_logger_struct
 	{
 		int idx;
 		int key;
 		int val;
 	};
 
-	typedef logger<test> testlogger;
+	typedef logger<test_logger_struct> testlogger;
 
 	class logger_test
 	{
@@ -22,7 +22,7 @@ namespace test
 		{
 			for(int i = 0; i < l.maxIndex(); ++i)
 			{
-				test t = l.get(i);
+				test_logger_struct t = l.get(i);
 				cout << t.idx << " " << t.key << " " << t.val << endl;
 			}
 		}
@@ -32,11 +32,11 @@ namespace test
 			{
 				cout << "generating..." << endl;
 				testlogger l("tmp.bin");
-				vector<test> v;
+				vector<test_logger_struct> v;
 				int maxsize = rand() % 20;
 				for(int i = 0; i < maxsize; ++i)
 				{
-					test t = { rand() % 1000, rand() % 1000, rand() % 1000 };
+					test_logger_struct t = { rand() % 1000, rand() % 1000, rand() % 1000 };
 					cout << t.idx << " " << t.key << " " << t.val << endl;
 					l.set(i, t);
 				}
@@ -51,15 +51,15 @@ namespace test
 			{
 				cout << "modifing..." << endl;
 				testlogger l("tmp.bin", true);
-				l.set(3, test { 0, 0 , 0 });
+				l.set(3, test_logger_struct { 0, 0 , 0 });
 				printLogger(l);
 				cout << endl;
 			}
 			{
 				cout << "appending..." << endl;
 				testlogger l("tmp.bin", true);
-				l.set(l.maxIndex(), test { 10, 10, 10 });
-				l.app(test { 20, 20, 20 });
+				l.set(l.maxIndex(), test_logger_struct { 10, 10, 10 });
+				l.app(test_logger_struct { 20, 20, 20 });
 				printLogger(l);
 				cout << endl;
 			}
@@ -68,7 +68,7 @@ namespace test
 				testlogger l("tmp.bin", true);
 				try
 				{
-					l.set(l.maxIndex()*2, test { 30, 30, 30 });
+					l.set(l.maxIndex()*2, test_logger_struct { 30, 30, 30 });
 				}
 				catch(out_of_range &e)
 				{
