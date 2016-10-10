@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 		? new TCPAcceptor(atoi(argv[1]), argv[2])
 		: new TCPAcceptor(atoi(argv[1]))
 	);
-	if (acceptor->start() == 0) {
+	if (acceptor->start()) {
 		while (1) {
 			auto stream = acceptor->accept();
 			if (stream) {

@@ -61,7 +61,7 @@ void store<TK, TV>::apply(const operation<TK, TV>& op)
 template<typename TK, typename TV>
 TV& store<TK, TV>::get(const TK& tk)
 {
-	return data.at(tk);
+	return data[tk];
 }
 
 template<typename TK, typename TV>

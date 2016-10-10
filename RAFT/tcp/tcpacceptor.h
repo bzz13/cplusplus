@@ -41,7 +41,7 @@ public:
 	TCPAcceptor(int port, const char* address);
 	~TCPAcceptor();
 
-	int						start();
+	bool					start();
 	unique_ptr<TCPStream>	accept();
 };
 

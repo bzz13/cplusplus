@@ -44,11 +44,11 @@ TCPAcceptor::~TCPAcceptor()
 	}
 }
 
-int TCPAcceptor::start()
+bool TCPAcceptor::start()
 {
 	if (m_listening == true)
 	{
-		return 0;
+		return false;
 	}
 
 	m_listning_socket = socket(PF_INET, SOCK_STREAM, 0);
@@ -69,21 +69,19 @@ int TCPAcceptor::start()
 	int optval = 1;
 	setsockopt(m_listning_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
 
-	int result = bind(m_listning_socket, (struct sockaddr*)&address, sizeof(address));
-	if (result != 0)
+	if (bind(m_listning_socket, (struct sockaddr*)&address, sizeof(address)) != 0)
 	{
 		perror("bind() failed");
-		return result;
+		return false;
 	}
 
-	result = listen(m_listning_socket, 5);
-	if (result != 0)
+	if (listen(m_listning_socket, 5) != 0)
 	{
 		perror("listen() failed");
-		return result;
+		return false;
 	}
 	m_listening = true;
-	return result;
+	return true;
 }
 
 unique_ptr<TCPStream> TCPAcceptor::accept()
