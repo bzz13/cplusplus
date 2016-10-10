@@ -13,6 +13,7 @@ class TCPSocket
 
 	bool bind(int m_port, std::string m_address);
 	bool listen();
+	bool accept(int& accepted_socket, struct sockaddr_in* address);
 public:
 	enum {
 		connectionClosed = 0,

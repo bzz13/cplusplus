@@ -77,3 +77,11 @@ bool TCPSocket::listen()
 {
 	return ::listen(m_socket, 5) == 0;
 }
+
+bool TCPSocket::accept(int& accepted_socket, struct sockaddr_in* address)
+{
+	socklen_t length = sizeof(*address);
+	memset(address, 0, length);
+	accepted_socket = ::accept(m_socket, (struct sockaddr*)address, &length);
+	return accepted_socket >= 0;
+}
