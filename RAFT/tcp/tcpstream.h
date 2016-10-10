@@ -28,20 +28,19 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <string>
+#include "tcpsocket.h"
 
 using namespace std;
 
 class TCPStream
 {
-	int		m_socket;
-	string	m_peerIP;
-	int		m_peerPort;
+	TCPSocket	m_socket;
+	string		m_peerIP;
+	int			m_peerPort;
 
 public:
 	friend class TCPAcceptor;
 	friend class TCPConnector;
-
-	~TCPStream();
 
 	ssize_t send(const char* buffer, size_t len);
 	ssize_t send(const string& message);
@@ -50,16 +49,8 @@ public:
 	string	getPeerIP();
 	int		getPeerPort();
 
-	enum {
-		connectionClosed = 0,
-		connectionReset = -1,
-		connectionTimedOut = -2
-	};
-
 private:
-	bool waitForReadEvent(unsigned int timeout);
-
-	TCPStream(int sd, struct sockaddr_in* address);
+	TCPStream(int socket, struct sockaddr_in* address);
 	TCPStream() = delete;
 	TCPStream(const TCPStream& stream) = delete;
 };

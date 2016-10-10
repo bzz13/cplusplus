@@ -1,0 +1,57 @@
+#include <string>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/select.h>
+#include "tcpsocket.h"
+
+
+TCPSocket::TCPSocket(int socket): m_socket(socket)
+{
+}
+
+TCPSocket::~TCPSocket()
+{
+	close(m_socket);
+}
+
+
+int TCPSocket::native()
+{
+	return m_socket;
+}
+
+ssize_t TCPSocket::send(const char* buffer, size_t length)
+{
+	return write(m_socket, buffer, length);
+}
+
+ssize_t TCPSocket::send(const std::string& message)
+{
+	return write(m_socket, message.c_str(), message.size());
+}
+
+ssize_t TCPSocket::receive(char* buffer, size_t length, unsigned int timeout)
+{
+	return timeout == 0
+		? read(m_socket, buffer, length)
+		: (waitForReadEvent(timeout)
+			? read(m_socket, buffer, length)
+			: connectionTimedOut);
+}
+
+bool TCPSocket::waitForReadEvent(unsigned int timeout)
+{
+	fd_set sdset;
+	struct timeval tv;
+
+	tv.tv_sec = timeout;
+	tv.tv_usec = 0;
+	FD_ZERO(&sdset);
+	FD_SET(m_socket, &sdset);
+	return select(m_socket + 1, &sdset, nullptr, nullptr, &tv) > 0;
+}
