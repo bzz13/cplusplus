@@ -63,13 +63,9 @@ bool TCPSocket::bind(int m_port, std::string m_address)
 	address.sin_family = PF_INET;
 	address.sin_port = htons(m_port);
 	if (m_address.size() > 0)
-	{
 		inet_pton(PF_INET, m_address.c_str(), &(address.sin_addr));
-	}
 	else
-	{
 		address.sin_addr.s_addr = INADDR_ANY;
-	}
 
 	int optval = 1;
 	setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
