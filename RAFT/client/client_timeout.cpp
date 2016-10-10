@@ -26,7 +26,6 @@
    limitations under the License.
 */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <memory>
@@ -39,36 +38,32 @@ int main(int argc, char** argv)
 {
 	if (argc != 5) {
 		cerr << "usage: " << argv[0] << " <pause port> <time out port> <ip> <time out>" << endl;
-		exit(1);
+		return 1;
 	}
 
 	int result, timeout = atoi(argv[4]);
-	string message;
 	char line[256];
 
 	clog << "Connecting to the paused server..." << endl;
 	TCPConnector connector;
 	auto stream = connector.connect(argv[3], atoi(argv[1]), timeout);
-	if (stream == nullptr) {
+	if (!stream)
+	{
 		cerr << "Timed out connecting to the server" << endl;
 	}
 
 	clog << "Connecting to the time out server..." << endl;
 	stream = connector.connect(argv[3], atoi(argv[2]), timeout);
 	if (stream) {
-		message = "Is there life on Mars?";
+		string message("Is there life on Mars?");
 		stream->send(message);
 		clog << "sent - " << message << endl;
 		result = stream->receive(line, sizeof(line), timeout);
 		if (result == TCPStream::connectionTimedOut)
-		{
 			cerr << "Timed out waiting for a server response" << endl;
-		}
 		else
-		{
 			clog << "received - " << line << endl;
-		}
 	}
 
-	exit(0);
+	return 0;
 }

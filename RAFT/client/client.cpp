@@ -20,7 +20,6 @@
    limitations under the License.
 */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <memory>
@@ -33,16 +32,16 @@ int main(int argc, char** argv)
 {
 	if (argc != 3) {
 		cerr << "usage: " << argv[0] << " <port> <ip>" << endl;
-		exit(1);
+		return 1;
 	}
 
 	int len;
-	string message;
 	char line[256];
 	TCPConnector connector;
+
 	auto stream = connector.connect(argv[2], atoi(argv[1]));
 	if (stream) {
-		message = "Is there life on Mars?";
+		string message("Is there life on Mars?");
 		stream->send(message);
 		clog << "sent - " << message << endl;
 		len = stream->receive(line, sizeof(line));
@@ -52,12 +51,12 @@ int main(int argc, char** argv)
 
 	stream = connector.connect(argv[2], atoi(argv[1]));
 	if (stream) {
-		message = "Why is there air?";
+		string message("Why is there air?");
 		stream->send(message);
 		clog << "sent - " << message << endl;
 		len = stream->receive(line, sizeof(line));
 		line[len] = 0;
 		clog << "received - " << line << endl;
 	}
-	exit(0);
+	return 0;
 }

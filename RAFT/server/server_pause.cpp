@@ -22,10 +22,10 @@
    limitations under the License.
 */
 
-#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
 #include <string.h>
 #include <arpa/inet.h>
-#include <stdlib.h>
 #include "../tcp/tcpacceptor.h"
 
 int main(int argc, char** argv)
@@ -43,7 +43,7 @@ int main(int argc, char** argv)
 
 	int result = bind(lsd, (struct sockaddr*)&address, sizeof(address));
 	if (result != 0) {
-		perror("bind() failed");
+		cerr << "bind() failed" << endl;
 		return result;
 	}
 	pause();

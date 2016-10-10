@@ -46,17 +46,17 @@ unique_ptr<TCPStream> TCPConnector::connect(const char* server, int port)
 	}
 
 	// Create and connect the socket, bail if we fail in either case
-	int sd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sd < 0) {
+	int socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
+	if (socket_descriptor < 0) {
 		perror("socket() failed");
 		return nullptr;
 	}
-	if (::connect(sd, (struct sockaddr*)&address, sizeof(address)) != 0) {
+	if (::connect(socket_descriptor, (struct sockaddr*)&address, sizeof(address)) != 0) {
 		perror("connect() failed");
-		close(sd);
+		close(socket_descriptor);
 		return nullptr;
 	}
-	return unique_ptr<TCPStream>(new TCPStream(sd, &address));
+	return unique_ptr<TCPStream>(new TCPStream(socket_descriptor, &address));
 }
 
 unique_ptr<TCPStream>TCPConnector::connect(const char* server, int port, unsigned int timeout)
@@ -77,38 +77,38 @@ unique_ptr<TCPStream>TCPConnector::connect(const char* server, int port, unsigne
 	fd_set sdset;
 	struct timeval tv;
 	socklen_t len;
-	int result = -1, valopt, sd = socket(AF_INET, SOCK_STREAM, 0);
+	int result = -1, valopt, socket_descriptor = socket(AF_INET, SOCK_STREAM, 0);
 
 	// Bail if we fail to create the socket
-	if (sd < 0) {
+	if (socket_descriptor < 0) {
 		perror("socket() failed");
 		return nullptr;
 	}
 
 	// Set socket to non-blocking
-	arg = fcntl(sd, F_GETFL, nullptr);
+	arg = fcntl(socket_descriptor, F_GETFL, nullptr);
 	arg |= O_NONBLOCK;
-	fcntl(sd, F_SETFL, arg);
+	fcntl(socket_descriptor, F_SETFL, arg);
 
 	// Connect with time limit
 	string message;
-	if ((result = ::connect(sd, (struct sockaddr *)&address, sizeof(address))) < 0)
+	if ((result = ::connect(socket_descriptor, (struct sockaddr *)&address, sizeof(address))) < 0)
 	{
 		if (errno == EINPROGRESS)
 		{
 			tv.tv_sec = timeout;
 			tv.tv_usec = 0;
 			FD_ZERO(&sdset);
-			FD_SET(sd, &sdset);
+			FD_SET(socket_descriptor, &sdset);
 			int s = -1;
 			do
 			{
-				s = select(sd + 1, nullptr, &sdset, nullptr, &tv);
+				s = select(socket_descriptor + 1, nullptr, &sdset, nullptr, &tv);
 			} while (s == -1 && errno == EINTR);
 			if (s > 0)
 			{
 				len = sizeof(int);
-				getsockopt(sd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &len);
+				getsockopt(socket_descriptor, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &len);
 				if (valopt)
 				{
 					fprintf(stderr, "connect() error %d - %s\n", valopt, strerror(valopt));
@@ -131,21 +131,21 @@ unique_ptr<TCPStream>TCPConnector::connect(const char* server, int port, unsigne
 	}
 
 	// Return socket to blocking mode
-	arg = fcntl(sd, F_GETFL, nullptr);
+	arg = fcntl(socket_descriptor, F_GETFL, nullptr);
 	arg &= (~O_NONBLOCK);
-	fcntl(sd, F_SETFL, arg);
+	fcntl(socket_descriptor, F_SETFL, arg);
 
 	// Create stream object if connected
 	return (result == -1)
 		? nullptr
-		: unique_ptr<TCPStream>(new TCPStream(sd, &address));
+		: unique_ptr<TCPStream>(new TCPStream(socket_descriptor, &address));
 }
 
 int TCPConnector::resolveHostName(const char* hostname, struct in_addr* addr)
 {
 	struct addrinfo *res;
 
-	int result = getaddrinfo (hostname, nullptr, nullptr, &res);
+	int result = getaddrinfo(hostname, nullptr, nullptr, &res);
 	if (result == 0)
 	{
 		memcpy(addr, &((struct sockaddr_in *) res->ai_addr)->sin_addr, sizeof(struct in_addr));

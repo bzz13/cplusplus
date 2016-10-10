@@ -22,8 +22,9 @@
    limitations under the License.
 */
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <memory>
 #include "../tcp/tcpacceptor.h"
 
 int main(int argc, char** argv)
@@ -33,24 +34,22 @@ int main(int argc, char** argv)
 		exit(1);
 	}
 
-	TCPAcceptor* acceptor = nullptr;
-	if (argc == 3) {
-		acceptor = new TCPAcceptor(atoi(argv[1]), argv[2]);
-	}
-	else {
-		acceptor = new TCPAcceptor(atoi(argv[1]));
-	}
+	unique_ptr<TCPAcceptor> acceptor(
+		argc == 3
+		? new TCPAcceptor(atoi(argv[1]), argv[2])
+		: new TCPAcceptor(atoi(argv[1]))
+	);
 	if (acceptor->start() == 0) {
 		while (1) {
-			unique_ptr<TCPStream> stream = acceptor->accept();
-			if (stream != nullptr) {
+			auto stream = acceptor->accept();
+			if (stream) {
 				ssize_t len;
 				char line[256];
 				while ((len = stream->receive(line, sizeof(line))) > 0);
-				printf("connection closed\n");
+				clog << "connection closed" << endl;
 			}
 		}
 	}
-	exit(0);
+	return 0;
 }
 
