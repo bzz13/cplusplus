@@ -5,9 +5,14 @@
 
 class TCPSocket
 {
+	friend class TCPAcceptor;
+
 	int m_socket;
 
 	bool waitForReadEvent(unsigned int timeout);
+
+	bool bind(int m_port, std::string m_address);
+	bool listen();
 public:
 	enum {
 		connectionClosed = 0,
@@ -18,7 +23,7 @@ public:
 	explicit TCPSocket(int socket);
 	~TCPSocket();
 
-	int native();
+	const int getnative() const;
 
 	ssize_t send(const char* buffer, size_t length);
 	ssize_t send(const std::string& message);

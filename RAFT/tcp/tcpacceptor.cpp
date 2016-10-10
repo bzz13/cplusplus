@@ -24,10 +24,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "tcpacceptor.h"
 
-TCPAcceptor::TCPAcceptor(int port, const std::string& address)
-	: m_port(port), m_address(address)
+TCPAcceptor::TCPAcceptor(int port, const std::string& address):
+	m_listning_socket(socket(PF_INET, SOCK_STREAM, 0)),
+	m_port(port),
+	m_address(address)
 {
 }
 
@@ -36,57 +42,31 @@ TCPAcceptor::TCPAcceptor(int port, const char* address)
 {
 }
 
-TCPAcceptor::~TCPAcceptor()
-{
-	if (m_listning_socket > 0)
-	{
-		close(m_listning_socket);
-	}
-}
-
 bool TCPAcceptor::start()
 {
-	if (m_listening == true)
+	if (m_listning == true)
 	{
 		return false;
 	}
 
-	m_listning_socket = socket(PF_INET, SOCK_STREAM, 0);
-	struct sockaddr_in address;
-
-	memset(&address, 0, sizeof(address));
-	address.sin_family = PF_INET;
-	address.sin_port = htons(m_port);
-	if (m_address.size() > 0)
-	{
-		inet_pton(PF_INET, m_address.c_str(), &(address.sin_addr));
-	}
-	else
-	{
-		address.sin_addr.s_addr = INADDR_ANY;
-	}
-
-	int optval = 1;
-	setsockopt(m_listning_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
-
-	if (bind(m_listning_socket, (struct sockaddr*)&address, sizeof(address)) != 0)
+	if (!m_listning_socket.bind(m_port, m_address))
 	{
 		perror("bind() failed");
 		return false;
 	}
 
-	if (listen(m_listning_socket, 5) != 0)
+	if (!m_listning_socket.listen())
 	{
 		perror("listen() failed");
 		return false;
 	}
-	m_listening = true;
-	return true;
+	m_listning = true;
+	return m_listning;
 }
 
 unique_ptr<TCPStream> TCPAcceptor::accept()
 {
-	if (m_listening == false)
+	if (m_listning == false)
 	{
 		return nullptr;
 	}
@@ -94,11 +74,11 @@ unique_ptr<TCPStream> TCPAcceptor::accept()
 	struct sockaddr_in address;
 	socklen_t len = sizeof(address);
 	memset(&address, 0, sizeof(address));
-	int sd = ::accept(m_listning_socket, (struct sockaddr*)&address, &len);
-	if (sd < 0)
+	int socket = ::accept(m_listning_socket.getnative(), (struct sockaddr*)&address, &len);
+	if (socket < 0)
 	{
 		perror("accept() failed");
 		return nullptr;
 	}
-	return unique_ptr<TCPStream>(new TCPStream(sd, &address));
+	return unique_ptr<TCPStream>(new TCPStream(socket, &address));
 }

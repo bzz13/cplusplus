@@ -24,22 +24,21 @@
 #ifndef __tcpacceptor_h__
 #define __tcpacceptor_h__
 
+#include "tcpstream.h"
+#include "tcpsocket.h"
 #include <string>
 #include <memory>
-#include <netinet/in.h>
-#include "tcpstream.h"
 
 class TCPAcceptor
 {
-	int		m_port;
-	string	m_address;
-	int		m_listning_socket = 0;
-	bool	m_listening = false;
+	int			m_port;
+	string		m_address;
+	TCPSocket	m_listning_socket;
+	bool		m_listning = false;
 
 public:
 	TCPAcceptor(int port, const std::string& address = "");
 	TCPAcceptor(int port, const char* address);
-	~TCPAcceptor();
 
 	bool					start();
 	unique_ptr<TCPStream>	accept();

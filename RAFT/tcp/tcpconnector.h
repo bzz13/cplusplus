@@ -24,9 +24,9 @@
 #ifndef __tcpconnector_h__
 #define __tcpconnector_h__
 
-#include <netinet/in.h>
-#include <memory>
 #include "tcpstream.h"
+#include <memory>
+#include <netinet/in.h>
 
 class TCPConnector
 {

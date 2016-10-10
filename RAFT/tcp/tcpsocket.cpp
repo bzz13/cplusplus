@@ -3,8 +3,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/select.h>
 #include "tcpsocket.h"
@@ -20,7 +20,7 @@ TCPSocket::~TCPSocket()
 }
 
 
-int TCPSocket::native()
+const int TCPSocket::getnative() const
 {
 	return m_socket;
 }
@@ -54,4 +54,30 @@ bool TCPSocket::waitForReadEvent(unsigned int timeout)
 	FD_ZERO(&sdset);
 	FD_SET(m_socket, &sdset);
 	return select(m_socket + 1, &sdset, nullptr, nullptr, &tv) > 0;
+}
+
+bool TCPSocket::bind(int m_port, std::string m_address)
+{
+	struct sockaddr_in address;
+	memset(&address, 0, sizeof(address));
+	address.sin_family = PF_INET;
+	address.sin_port = htons(m_port);
+	if (m_address.size() > 0)
+	{
+		inet_pton(PF_INET, m_address.c_str(), &(address.sin_addr));
+	}
+	else
+	{
+		address.sin_addr.s_addr = INADDR_ANY;
+	}
+
+	int optval = 1;
+	setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+
+	return ::bind(m_socket, (struct sockaddr*)&address, sizeof(address)) == 0;
+}
+
+bool TCPSocket::listen()
+{
+	return ::listen(m_socket, 5) == 0;
 }
