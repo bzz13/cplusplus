@@ -8,7 +8,7 @@
 #include "tcpacceptor.h"
 
 TCPAcceptor::TCPAcceptor(int port, const std::string& address):
-	m_listning_socket(socket(PF_INET, SOCK_STREAM, 0)),
+	m_listning_socket(new TCPSocket(socket(PF_INET, SOCK_STREAM, 0))),
 	m_port(port),
 	m_address(address)
 {
@@ -26,13 +26,13 @@ bool TCPAcceptor::start()
 		return false;
 	}
 
-	if (!m_listning_socket.bind(m_port, m_address))
+	if (!m_listning_socket->bind(m_port, m_address))
 	{
 		perror("bind() failed");
 		return false;
 	}
 
-	if (!m_listning_socket.listen())
+	if (!m_listning_socket->listen())
 	{
 		perror("listen() failed");
 		return false;
@@ -48,12 +48,12 @@ unique_ptr<TCPStream> TCPAcceptor::accept()
 		return nullptr;
 	}
 
-	int accepted_socket;
+	unique_ptr<TCPSocket> accepting_socket;
 	struct sockaddr_in address;
-	if (!m_listning_socket.accept(accepted_socket, &address))
+	if (!m_listning_socket->accept(accepting_socket, &address))
 	{
 		perror("accept() failed");
 		return nullptr;
 	}
-	return unique_ptr<TCPStream>(new TCPStream(accepted_socket, &address));
+	return unique_ptr<TCPStream>(new TCPStream(accepting_socket, &address));
 }

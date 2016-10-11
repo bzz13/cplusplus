@@ -1,12 +1,14 @@
 #include <string>
+#include <fcntl.h>
+#include <netdb.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/time.h>
 #include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
 #include "tcpsocket.h"
 
 
@@ -78,10 +80,118 @@ bool TCPSocket::listen()
 	return ::listen(m_socket, 5) == 0;
 }
 
-bool TCPSocket::accept(int& accepted_socket, struct sockaddr_in* address)
+bool TCPSocket::accept(std::unique_ptr<TCPSocket>& accepting_socket, struct sockaddr_in* address)
 {
 	socklen_t length = sizeof(*address);
 	memset(address, 0, length);
-	accepted_socket = ::accept(m_socket, (struct sockaddr*)address, &length);
-	return accepted_socket >= 0;
+	accepting_socket = 
+		std::move(
+			std::unique_ptr<TCPSocket>(
+				new TCPSocket(::accept(m_socket, (struct sockaddr*)address, &length))));
+	return accepting_socket->getnative() >= 0;
+}
+
+bool TCPSocket::resolveHostName(const char* hostname, struct in_addr* addr)
+{
+	struct addrinfo *res;
+
+	int result = getaddrinfo(hostname, nullptr, nullptr, &res);
+	if (result == 0)
+	{
+		memcpy(addr, &((struct sockaddr_in *) res->ai_addr)->sin_addr, sizeof(struct in_addr));
+		freeaddrinfo(res);
+	}
+	return result != 0 ;
+}
+
+bool TCPSocket::connect(const char* hostname, int port, struct sockaddr_in* address)
+{
+	memset(address, 0, sizeof(*address));
+	address->sin_family = AF_INET;
+	address->sin_port = htons(port);
+	if (!resolveHostName(hostname, &(address->sin_addr)))
+	{
+		inet_pton(PF_INET, hostname, &(address->sin_addr));
+	}
+
+	return ::connect(m_socket, (struct sockaddr*)address, sizeof(*address)) == 0;
+}
+
+bool TCPSocket::connect(const char* hostname, int port, struct sockaddr_in* address, unsigned int timeout)
+{
+	memset(address, 0, sizeof(*address));
+	address->sin_family = AF_INET;
+	address->sin_port = htons(port);
+	if (!resolveHostName(hostname, &(address->sin_addr)))
+	{
+		inet_pton(PF_INET, hostname, &(address->sin_addr));
+	}
+
+	// Set socket to non-blocking
+	setNonBlocking();
+
+	// Connect with time limit
+	int result = -1;
+	if ((result = ::connect(m_socket, (struct sockaddr *)address, sizeof(*address))) < 0)
+	{
+		if (errno == EINPROGRESS)
+		{
+			struct timeval tv;
+			tv.tv_sec = timeout;
+			tv.tv_usec = 0;
+
+			fd_set sdset;
+			FD_ZERO(&sdset);
+			FD_SET(m_socket, &sdset);
+			int s = -1;
+			do
+			{
+				s = select(m_socket + 1, nullptr, &sdset, nullptr, &tv);
+			}
+			while (s == -1 && errno == EINTR);
+
+			if (s > 0)
+			{
+				socklen_t len = sizeof(int);
+				int valopt;
+				getsockopt(m_socket, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &len);
+				if (valopt)
+				{
+					perror("connect() error");
+				}
+				else
+				{
+					// connection established
+					result = 0;
+				}
+			}
+			else
+			{
+				perror("connect() timed out");
+			}
+		}
+		else
+		{
+			perror("connect() error");
+		}
+	}
+
+	// Return socket to blocking mode
+	setBlocking();
+
+	return result != -1;
+}
+
+void TCPSocket::setBlocking()
+{
+	long arg = fcntl(m_socket, F_GETFL, nullptr);
+	arg |= O_NONBLOCK;
+	fcntl(m_socket, F_SETFL, arg);
+}
+
+void TCPSocket::setNonBlocking()
+{
+	long arg = fcntl(m_socket, F_GETFL, nullptr);
+	arg &= (~O_NONBLOCK);
+	fcntl(m_socket, F_SETFL, arg);
 }

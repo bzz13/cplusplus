@@ -2,6 +2,7 @@
 #define __tcpstream_h__
 
 #include "tcpsocket.h"
+#include <memory>
 #include <string>
 #include <netinet/in.h>
 
@@ -9,9 +10,9 @@ using namespace std;
 
 class TCPStream
 {
-	TCPSocket	m_socket;
-	string		m_peerIP;
-	int			m_peerPort;
+	unique_ptr<TCPSocket>	m_socket;
+	string					m_peerIP;
+	int						m_peerPort;
 
 public:
 	friend class TCPAcceptor;
@@ -25,7 +26,8 @@ public:
 	int		getPeerPort();
 
 private:
-	TCPStream(int socket, struct sockaddr_in* address);
+	// TCPStream(int socket, struct sockaddr_in* address);
+	TCPStream(unique_ptr<TCPSocket>& socket, struct sockaddr_in* address);
 	TCPStream() = delete;
 	TCPStream(const TCPStream& stream) = delete;
 };
