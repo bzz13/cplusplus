@@ -7,7 +7,7 @@
 class TCPConnector
 {
 public:
-	unique_ptr<TCPStream> connect(const char* server, const int port, const unsigned int timeout = 0);
+    unique_ptr<TCPStream> connect(const char* server, const int port, const unsigned int timeout = 0);
 };
 
 #endif
