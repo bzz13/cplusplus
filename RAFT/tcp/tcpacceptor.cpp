@@ -49,11 +49,10 @@ unique_ptr<TCPStream> TCPAcceptor::accept()
     }
 
     unique_ptr<TCPSocket> accepting_socket;
-    struct sockaddr_in address;
-    if (!m_listning_socket->accept(accepting_socket, &address))
+    if (!m_listning_socket->accept(accepting_socket))
     {
         perror("accept() failed");
         return nullptr;
     }
-    return unique_ptr<TCPStream>(new TCPStream(accepting_socket, &address));
+    return unique_ptr<TCPStream>(new TCPStream(accepting_socket));
 }

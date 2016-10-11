@@ -40,10 +40,10 @@ ssize_t TCPSocket::send(const std::string& message)
 ssize_t TCPSocket::receive(char* buffer, size_t length, unsigned int timeout)
 {
     return timeout == 0
-           ? read(m_socket, buffer, length)
-           : (waitForReadEvent(timeout)
-              ? read(m_socket, buffer, length)
-              : connectionTimedOut);
+        ? read(m_socket, buffer, length)
+        : (waitForReadEvent(timeout)
+            ? read(m_socket, buffer, length)
+            : connectionTimedOut);
 }
 
 bool TCPSocket::waitForReadEvent(unsigned int timeout)
@@ -80,14 +80,15 @@ bool TCPSocket::listen()
     return ::listen(m_socket, 5) == 0;
 }
 
-bool TCPSocket::accept(std::unique_ptr<TCPSocket>& accepting_socket, struct sockaddr_in* address)
+bool TCPSocket::accept(std::unique_ptr<TCPSocket>& accepting_socket)
 {
-    socklen_t length = sizeof(*address);
-    memset(address, 0, length);
+    struct sockaddr_in address;
+    socklen_t length = sizeof(address);
+    memset(&address, 0, length);
     accepting_socket =
         std::move(
             std::unique_ptr<TCPSocket>(
-                new TCPSocket(::accept(m_socket, (struct sockaddr*)address, &length))));
+                new TCPSocket(::accept(m_socket, (struct sockaddr*)&address, &length))));
     return accepting_socket->getnative() >= 0;
 }
 
@@ -104,27 +105,29 @@ bool TCPSocket::resolveHostName(const char* hostname, struct in_addr* addr)
     return result != 0 ;
 }
 
-bool TCPSocket::connect(const char* hostname, int port, struct sockaddr_in* address)
+bool TCPSocket::connect(const char* hostname, int port)
 {
-    memset(address, 0, sizeof(*address));
-    address->sin_family = AF_INET;
-    address->sin_port = htons(port);
-    if (!resolveHostName(hostname, &(address->sin_addr)))
+    struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    if (!resolveHostName(hostname, &(address.sin_addr)))
     {
-        inet_pton(PF_INET, hostname, &(address->sin_addr));
+        inet_pton(PF_INET, hostname, &(address.sin_addr));
     }
 
-    return ::connect(m_socket, (struct sockaddr*)address, sizeof(*address)) == 0;
+    return ::connect(m_socket, (struct sockaddr*)&address, sizeof(address)) == 0;
 }
 
-bool TCPSocket::connect(const char* hostname, int port, struct sockaddr_in* address, unsigned int timeout)
+bool TCPSocket::connect(const char* hostname, int port, unsigned int timeout)
 {
-    memset(address, 0, sizeof(*address));
-    address->sin_family = AF_INET;
-    address->sin_port = htons(port);
-    if (!resolveHostName(hostname, &(address->sin_addr)))
+    struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    if (!resolveHostName(hostname, &(address.sin_addr)))
     {
-        inet_pton(PF_INET, hostname, &(address->sin_addr));
+        inet_pton(PF_INET, hostname, &(address.sin_addr));
     }
 
     // Set socket to non-blocking
@@ -132,7 +135,7 @@ bool TCPSocket::connect(const char* hostname, int port, struct sockaddr_in* addr
 
     // Connect with time limit
     int result = -1;
-    if ((result = ::connect(m_socket, (struct sockaddr *)address, sizeof(*address))) < 0)
+    if ((result = ::connect(m_socket, (struct sockaddr *)&address, sizeof(address))) < 0)
     {
         if (errno == EINPROGRESS)
         {
