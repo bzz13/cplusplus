@@ -58,7 +58,7 @@ bool TCPSocket::waitForReadEvent(const unsigned int& timeout)
     return select(m_socket + 1, &sdset, nullptr, nullptr, &tv) > 0;
 }
 
-bool TCPSocket::bind(const int& port, const std::string& hostname)
+bool TCPSocket::bind(const std::string& hostname, const int& port)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
@@ -104,7 +104,7 @@ bool TCPSocket::resolveHostName(const char* hostname, struct in_addr* addr)
     return result != 0;
 }
 
-bool TCPSocket::connect(const char* hostname, int port)
+bool TCPSocket::connect(const char* hostname, const int& port)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
@@ -118,7 +118,7 @@ bool TCPSocket::connect(const char* hostname, int port)
     return ::connect(m_socket, (struct sockaddr*)&address, length) == 0;
 }
 
-bool TCPSocket::connect(const char* hostname, int port, unsigned int timeout)
+bool TCPSocket::connect(const char* hostname, const int& port, const unsigned int& timeout)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);

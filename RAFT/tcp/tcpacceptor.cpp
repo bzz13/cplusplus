@@ -19,7 +19,7 @@ bool TCPAcceptor::start()
 {
     if (m_listning == true)
         return false;
-    if (!m_listning_socket.bind(m_port, m_address))
+    if (!m_listning_socket.bind(m_address, m_port))
         throw TCPException("bind() failed");
     if (!m_listning_socket.listen())
         throw TCPException("listen() failed");
