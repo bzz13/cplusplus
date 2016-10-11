@@ -12,7 +12,7 @@
 #include "tcpsocket.h"
 
 
-TCPSocket::TCPSocket(int socket): m_socket(socket)
+TCPSocket::TCPSocket(const int& socket): m_socket(socket)
 {
 }
 
@@ -46,7 +46,7 @@ ssize_t TCPSocket::receive(char* buffer, size_t length, unsigned int timeout)
             : connectionTimedOut);
 }
 
-bool TCPSocket::waitForReadEvent(unsigned int timeout)
+bool TCPSocket::waitForReadEvent(const unsigned int& timeout)
 {
     fd_set sdset;
     struct timeval tv;
@@ -58,14 +58,14 @@ bool TCPSocket::waitForReadEvent(unsigned int timeout)
     return select(m_socket + 1, &sdset, nullptr, nullptr, &tv) > 0;
 }
 
-bool TCPSocket::bind(int m_port, std::string m_address)
+bool TCPSocket::bind(const int& port, const std::string& hostname)
 {
     struct sockaddr_in address;
     memset(&address, 0, sizeof(address));
     address.sin_family = PF_INET;
-    address.sin_port = htons(m_port);
-    if (m_address.size() > 0)
-        inet_pton(PF_INET, m_address.c_str(), &(address.sin_addr));
+    address.sin_port = htons(port);
+    if (hostname.size() > 0)
+        inet_pton(PF_INET, hostname.c_str(), &(address.sin_addr));
     else
         address.sin_addr.s_addr = INADDR_ANY;
 
@@ -80,12 +80,12 @@ bool TCPSocket::listen()
     return ::listen(m_socket, 5) == 0;
 }
 
-TCPSocket TCPSocket::accept(std::unique_ptr<TCPSocket>& accepting_socket)
+TCPSocket* TCPSocket::accept()
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
     memset(&address, 0, length);
-    return TCPSocket(::accept(m_socket, (struct sockaddr*)&address, &length));
+    return new TCPSocket(::accept(m_socket, (struct sockaddr*)&address, &length));
 }
 
 bool TCPSocket::resolveHostName(const char* hostname, struct in_addr* addr)

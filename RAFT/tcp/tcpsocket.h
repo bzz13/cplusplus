@@ -9,11 +9,11 @@ class TCPSocket
 
     int m_socket;
 
-    bool waitForReadEvent(unsigned int timeout);
+    bool waitForReadEvent(const unsigned int& timeout);
 
-    bool bind(int m_port, std::string m_address);
+    bool bind(const int& port, const std::string& hostname);
     bool listen();
-    TCPSocket accept();
+    TCPSocket* accept();
 
     bool resolveHostName(const char* hostname, struct in_addr* addr);
     void setBlocking();
@@ -25,7 +25,7 @@ public:
         connectionTimedOut = -2
     };
 
-    explicit TCPSocket(int socket);
+    explicit TCPSocket(const int& socket);
     ~TCPSocket();
 
     const int getnative() const;
