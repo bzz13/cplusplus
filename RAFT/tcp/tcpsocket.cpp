@@ -80,16 +80,12 @@ bool TCPSocket::listen()
     return ::listen(m_socket, 5) == 0;
 }
 
-bool TCPSocket::accept(std::unique_ptr<TCPSocket>& accepting_socket)
+TCPSocket TCPSocket::accept(std::unique_ptr<TCPSocket>& accepting_socket)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
     memset(&address, 0, length);
-    accepting_socket =
-        std::move(
-            std::unique_ptr<TCPSocket>(
-                new TCPSocket(::accept(m_socket, (struct sockaddr*)&address, &length))));
-    return accepting_socket->getnative() >= 0;
+    return TCPSocket(::accept(m_socket, (struct sockaddr*)&address, &length));
 }
 
 bool TCPSocket::resolveHostName(const char* hostname, struct in_addr* addr)

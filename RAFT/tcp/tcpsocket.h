@@ -13,7 +13,7 @@ class TCPSocket
 
     bool bind(int m_port, std::string m_address);
     bool listen();
-    bool accept(std::unique_ptr<TCPSocket>& accepting_socket);
+    TCPSocket accept();
 
     bool resolveHostName(const char* hostname, struct in_addr* addr);
     void setBlocking();

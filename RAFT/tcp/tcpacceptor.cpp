@@ -45,8 +45,9 @@ std::unique_ptr<TCPStream> TCPAcceptor::accept()
         return nullptr;
     }
 
-    std::unique_ptr<TCPSocket> accepting_socket;
-    if (!m_listning_socket->accept(accepting_socket))
+    auto accepting_socket = std::make_unique<TCPSocket>(
+        m_listning_socket->accept(accepting_socket));
+    if (accepting_socket->getnative() < 0)
     {
         perror("accept() failed");
         return nullptr;
