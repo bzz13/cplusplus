@@ -1,5 +1,4 @@
-#ifndef __tcpsocket_h__
-#define __tcpsocket_h__
+#pragma once
 
 #include <string>
 #include <memory>
@@ -38,5 +37,3 @@ public:
     bool connect(const char* hostname, int port);
     bool connect(const char* hostname, int port, unsigned int timeout);
 };
-
-#endif

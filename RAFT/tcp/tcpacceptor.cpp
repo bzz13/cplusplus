@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "tcpacceptor.h"
 
@@ -41,18 +38,18 @@ bool TCPAcceptor::start()
     return m_listning;
 }
 
-unique_ptr<TCPStream> TCPAcceptor::accept()
+std::unique_ptr<TCPStream> TCPAcceptor::accept()
 {
     if (m_listning == false)
     {
         return nullptr;
     }
 
-    unique_ptr<TCPSocket> accepting_socket;
+    std::unique_ptr<TCPSocket> accepting_socket;
     if (!m_listning_socket->accept(accepting_socket))
     {
         perror("accept() failed");
         return nullptr;
     }
-    return unique_ptr<TCPStream>(new TCPStream(accepting_socket));
+    return std::unique_ptr<TCPStream>(new TCPStream(accepting_socket));
 }

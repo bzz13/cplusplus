@@ -1,5 +1,4 @@
-#ifndef __tcpacceptor_h__
-#define __tcpacceptor_h__
+#pragma once
 
 #include "tcpstream.h"
 #include "tcpsocket.h"
@@ -8,17 +7,15 @@
 
 class TCPAcceptor
 {
-    int                     m_port;
-    string                  m_address;
-    unique_ptr<TCPSocket>   m_listning_socket;
-    bool                    m_listning = false;
+    int                         m_port;
+    std::string                 m_address;
+    std::unique_ptr<TCPSocket>  m_listning_socket;
+    bool                        m_listning = false;
 
 public:
     TCPAcceptor(int port, const std::string& address = "");
     TCPAcceptor(int port, const char* address);
 
-    bool                    start();
-    unique_ptr<TCPStream>   accept();
+    bool                        start();
+    std::unique_ptr<TCPStream>  accept();
 };
-
-#endif
