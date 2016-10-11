@@ -28,7 +28,7 @@ public:
     explicit TCPSocket(const int& socket);
     ~TCPSocket();
 
-    const int getnative() const;
+    const int raw() const;
 
     ssize_t send(const char* buffer, size_t length);
     ssize_t send(const std::string& message);

@@ -22,7 +22,7 @@ TCPSocket::~TCPSocket()
 }
 
 
-const int TCPSocket::getnative() const
+const int TCPSocket::raw() const
 {
     return m_socket;
 }
