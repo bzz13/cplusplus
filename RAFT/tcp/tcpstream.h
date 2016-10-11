@@ -26,7 +26,6 @@ public:
 	int		getPeerPort();
 
 private:
-	// TCPStream(int socket, struct sockaddr_in* address);
 	TCPStream(unique_ptr<TCPSocket>& socket, struct sockaddr_in* address);
 	TCPStream() = delete;
 	TCPStream(const TCPStream& stream) = delete;
