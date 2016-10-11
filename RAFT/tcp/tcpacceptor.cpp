@@ -5,7 +5,7 @@
 #include "tcpacceptor.h"
 
 TCPAcceptor::TCPAcceptor(int port, const std::string& address):
-    m_listning_socket(new TCPSocket(socket(PF_INET, SOCK_STREAM, 0))),
+    m_listning_socket(socket(PF_INET, SOCK_STREAM, 0)),
     m_port(port),
     m_address(address)
 {
@@ -23,13 +23,13 @@ bool TCPAcceptor::start()
         return false;
     }
 
-    if (!m_listning_socket->bind(m_port, m_address))
+    if (!m_listning_socket.bind(m_port, m_address))
     {
         perror("bind() failed");
         return false;
     }
 
-    if (!m_listning_socket->listen())
+    if (!m_listning_socket.listen())
     {
         perror("listen() failed");
         return false;
@@ -46,7 +46,7 @@ std::unique_ptr<TCPStream> TCPAcceptor::accept()
     }
 
     auto accepting_socket = std::unique_ptr<TCPSocket>(
-        m_listning_socket->accept());
+        m_listning_socket.accept());
     if (accepting_socket->getnative() < 0)
     {
         perror("accept() failed");

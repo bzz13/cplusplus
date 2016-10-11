@@ -7,10 +7,10 @@
 
 class TCPAcceptor
 {
-    int                         m_port;
-    std::string                 m_address;
-    std::unique_ptr<TCPSocket>  m_listning_socket;
-    bool                        m_listning = false;
+    int         m_port;
+    std::string m_address;
+    TCPSocket   m_listning_socket;
+    bool        m_listning = false;
 
 public:
     TCPAcceptor(int port, const std::string& address = "");
