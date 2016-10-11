@@ -18,6 +18,7 @@ public:
 
 private:
     TCPStream(std::unique_ptr<TCPSocket>& socket);
+    TCPStream(std::unique_ptr<TCPSocket>&& socket);
     TCPStream() = delete;
     TCPStream(const TCPStream& stream) = delete;
 };

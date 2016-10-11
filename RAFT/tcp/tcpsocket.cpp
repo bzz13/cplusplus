@@ -1,7 +1,6 @@
 #include <string>
 #include <fcntl.h>
 #include <netdb.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -9,8 +8,9 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include "tcpsocket.h"
 
+#include "tcpsocket.h"
+#include "tcpexception.h"
 
 TCPSocket::TCPSocket(const int& socket): m_socket(socket)
 {
@@ -61,7 +61,8 @@ bool TCPSocket::waitForReadEvent(const unsigned int& timeout)
 bool TCPSocket::bind(const int& port, const std::string& hostname)
 {
     struct sockaddr_in address;
-    memset(&address, 0, sizeof(address));
+    socklen_t length = sizeof(address);
+    memset(&address, 0, length);
     address.sin_family = PF_INET;
     address.sin_port = htons(port);
     if (hostname.size() > 0)
@@ -72,7 +73,7 @@ bool TCPSocket::bind(const int& port, const std::string& hostname)
     int optval = 1;
     setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
 
-    return ::bind(m_socket, (struct sockaddr*)&address, sizeof(address)) == 0;
+    return ::bind(m_socket, (struct sockaddr*)&address, length) == 0;
 }
 
 bool TCPSocket::listen()
@@ -85,40 +86,43 @@ TCPSocket* TCPSocket::accept()
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
     memset(&address, 0, length);
-    return new TCPSocket(::accept(m_socket, (struct sockaddr*)&address, &length));
+    int accepted = ::accept(m_socket, (struct sockaddr*)&address, &length);
+    if (accepted < 0)
+        throw TCPException("not accepted");
+    return new TCPSocket(accepted);
 }
 
 bool TCPSocket::resolveHostName(const char* hostname, struct in_addr* addr)
 {
     struct addrinfo *res;
-
     int result = getaddrinfo(hostname, nullptr, nullptr, &res);
     if (result == 0)
     {
         memcpy(addr, &((struct sockaddr_in *) res->ai_addr)->sin_addr, sizeof(struct in_addr));
         freeaddrinfo(res);
     }
-    return result != 0 ;
+    return result != 0;
 }
 
 bool TCPSocket::connect(const char* hostname, int port)
 {
     struct sockaddr_in address;
-    memset(&address, 0, sizeof(address));
+    socklen_t length = sizeof(address);
+    memset(&address, 0, length);
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
     if (!resolveHostName(hostname, &(address.sin_addr)))
     {
         inet_pton(PF_INET, hostname, &(address.sin_addr));
     }
-
-    return ::connect(m_socket, (struct sockaddr*)&address, sizeof(address)) == 0;
+    return ::connect(m_socket, (struct sockaddr*)&address, length) == 0;
 }
 
 bool TCPSocket::connect(const char* hostname, int port, unsigned int timeout)
 {
     struct sockaddr_in address;
-    memset(&address, 0, sizeof(address));
+    socklen_t length = sizeof(address);
+    memset(&address, 0, length);
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
     if (!resolveHostName(hostname, &(address.sin_addr)))
@@ -131,7 +135,7 @@ bool TCPSocket::connect(const char* hostname, int port, unsigned int timeout)
 
     // Connect with time limit
     int result = -1;
-    if ((result = ::connect(m_socket, (struct sockaddr *)&address, sizeof(address))) < 0)
+    if ((result = ::connect(m_socket, (struct sockaddr *)&address, length)) < 0)
     {
         if (errno == EINPROGRESS)
         {
@@ -156,7 +160,7 @@ bool TCPSocket::connect(const char* hostname, int port, unsigned int timeout)
                 getsockopt(m_socket, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &len);
                 if (valopt)
                 {
-                    perror("connect() error");
+                    throw TCPException("connect() error");
                 }
                 else
                 {
@@ -166,12 +170,12 @@ bool TCPSocket::connect(const char* hostname, int port, unsigned int timeout)
             }
             else
             {
-                perror("connect() timed out");
+                throw TCPException("connect() timed out");
             }
         }
         else
         {
-            perror("connect() error");
+            throw TCPException("connect() error");
         }
     }
 

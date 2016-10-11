@@ -1,8 +1,7 @@
-#include <stdio.h>
-#include <string.h>
 #include <sys/socket.h>
 
 #include "tcpacceptor.h"
+#include "tcpexception.h"
 
 TCPAcceptor::TCPAcceptor(int port, const std::string& address):
     m_listning_socket(socket(PF_INET, SOCK_STREAM, 0)),
@@ -19,21 +18,11 @@ TCPAcceptor::TCPAcceptor(int port, const char* address)
 bool TCPAcceptor::start()
 {
     if (m_listning == true)
-    {
         return false;
-    }
-
     if (!m_listning_socket.bind(m_port, m_address))
-    {
-        perror("bind() failed");
-        return false;
-    }
-
+        throw TCPException("bind() failed");
     if (!m_listning_socket.listen())
-    {
-        perror("listen() failed");
-        return false;
-    }
+        throw TCPException("listen() failed");
     m_listning = true;
     return m_listning;
 }
@@ -41,16 +30,8 @@ bool TCPAcceptor::start()
 std::unique_ptr<TCPStream> TCPAcceptor::accept()
 {
     if (m_listning == false)
-    {
-        return nullptr;
-    }
-
-    auto accepting_socket = std::unique_ptr<TCPSocket>(
-        m_listning_socket.accept());
-    if (accepting_socket->raw() < 0)
-    {
-        perror("accept() failed");
-        return nullptr;
-    }
-    return std::unique_ptr<TCPStream>(new TCPStream(accepting_socket));
+        throw TCPException("accept() failed - not listning");
+    return std::unique_ptr<TCPStream>(new TCPStream(
+            std::unique_ptr<TCPSocket>(
+                m_listning_socket.accept())));
 }
