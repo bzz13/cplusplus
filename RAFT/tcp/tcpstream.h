@@ -17,8 +17,6 @@ public:
     ssize_t receive(char* buffer, size_t length, unsigned int timeout = 0);
 
 private:
+    TCPStream(TCPSocket* socket);
     TCPStream(std::unique_ptr<TCPSocket>& socket);
-    TCPStream(std::unique_ptr<TCPSocket>&& socket);
-    TCPStream() = delete;
-    TCPStream(const TCPStream& stream) = delete;
 };

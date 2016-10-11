@@ -1,11 +1,11 @@
 #include "tcpstream.h"
 
-TCPStream::TCPStream(std::unique_ptr<TCPSocket>& socket)
-    : m_socket(std::move(socket))
+TCPStream::TCPStream(TCPSocket* socket)
+    : m_socket(socket)
 {
 }
 
-TCPStream::TCPStream(std::unique_ptr<TCPSocket>&& socket)
+TCPStream::TCPStream(std::unique_ptr<TCPSocket>& socket)
     : m_socket(std::move(socket))
 {
 }
