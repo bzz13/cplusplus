@@ -22,7 +22,6 @@
    limitations under the License.
 */
 
-#include <stdlib.h>
 #include <iostream>
 #include <memory>
 #include "../tcp/tcpacceptor.h"
@@ -30,8 +29,8 @@
 int main(int argc, char** argv)
 {
 	if (argc < 2 || argc > 4) {
-		printf("usage: server <port> [<ip>]\n");
-		exit(1);
+		std::cerr << "usage: server <port> [<ip>]" << std::endl;
+		return 1;
 	}
 
 	unique_ptr<TCPAcceptor> acceptor(

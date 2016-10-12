@@ -1,4 +1,5 @@
 #include <memory>
+#include <sstream>
 #include <sys/socket.h>
 
 #include "tcpconnector.h"
@@ -10,6 +11,15 @@ std::unique_ptr<TCPStream>TCPConnector::connect(const char* server, const int po
     if (timeout == 0
         ? !connecting_socket->connect(server, port)
         : !connecting_socket->connect(server, port, timeout))
-        throw TCPException("connect() failed");
+    {
+        std::stringstream what;
+        what << "connect() to " << server << ": " << port << (timeout == 0 ? " failed" : " with timeout failed");
+        throw TCPException(what.str());
+    }
     return std::unique_ptr<TCPStream>(new TCPStream(connecting_socket));
+}
+
+std::unique_ptr<TCPStream>TCPConnector::connect(const std::string& server, const int port, const unsigned int timeout)
+{
+    return connect(server.c_str(), port, timeout);
 }
