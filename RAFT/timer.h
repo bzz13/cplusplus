@@ -8,6 +8,7 @@ class timer
 {
     std::chrono::high_resolution_clock::time_point  m_start_waiting_clock;
     std::chrono::milliseconds                       m_waiting_period;
+    bool                                            m_started = false;
 public:
     timer()
     {
@@ -16,17 +17,33 @@ public:
 
     void start()
     {
+        m_started = true;
         m_start_waiting_clock = std::chrono::high_resolution_clock::now();
-        m_waiting_period = std::chrono::milliseconds(rand() % 500 + 500);
+        m_waiting_period = std::chrono::milliseconds(rand() % 5000 + 500);
     }
 
     void reset()
     {
-        start();
+        m_started = true;
+        m_start_waiting_clock = std::chrono::high_resolution_clock::now();
+        m_waiting_period = std::chrono::milliseconds(rand() % 500 + 500);
+    }
+
+    void clear()
+    {
+        m_started = true;
+        m_start_waiting_clock = std::chrono::high_resolution_clock::now();
+        m_waiting_period = std::chrono::milliseconds(-100);
+    }
+
+    void stop()
+    {
+        m_started = false;
     }
 
     bool isExpired()
     {
+        if (!m_started) return false;
         auto clock_now = std::chrono::high_resolution_clock::now();
         auto duration = clock_now - m_start_waiting_clock;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();

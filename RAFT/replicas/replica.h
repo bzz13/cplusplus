@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <sstream>
 #include <iostream>
 
 class replica
@@ -31,6 +32,13 @@ public:
         return
             m_hostname == other.m_hostname &&
             m_port == other.m_port;
+    }
+
+    std::string toString()
+    {
+        std::stringstream ss;
+        ss << m_hostname << " " << m_port;
+        return ss.str();
     }
 
     friend std::ostream& operator<<(std::ostream& os, const replica& r)

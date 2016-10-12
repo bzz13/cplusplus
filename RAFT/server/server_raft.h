@@ -18,7 +18,7 @@ template<typename TK, typename TV>
 class server_raft
 {
     int             m_term;
-    int             m_status = serverStatus::followeer;
+    int             m_status = serverStatus::follower;
     bool            m_started;
     replica         m_self;
     replica         m_leader;
@@ -28,16 +28,19 @@ class server_raft
     std::thread     heartBeatSender;
     std::thread     heartBeatWaiter;
     std::thread     handler;
+    std::thread     voter;
 
     timer           m_timer;
 
     string handleRequest(const std::string&  request);
     std::vector<std::string> sendForAll(const std::string& message);
-    bool isMajority(const std::vector<string>& results, TV val);
+
+    bool isMajority(const std::vector<std::string>& results, std::string val);
+    bool isMajority(const std::vector<std::string>& results, TV val);
 public:
     enum serverStatus
     {
-        followeer = 0,
+        follower = 0,
         candidate = 1,
         leader = 2,
     };
@@ -48,6 +51,8 @@ public:
     void start();
     void startHeartBeatSending();
     void startHeartBeatWaiting();
+    void startElection();
+
     void startRequstHandling();
 };
 
@@ -67,6 +72,7 @@ server_raft<TK, TV>::~server_raft()
     if (handler.joinable()) handler.join();
     if (heartBeatSender.joinable()) heartBeatSender.join();
     if (heartBeatWaiter.joinable()) heartBeatWaiter.join();
+    if (voter.joinable()) voter.join();
 }
 
 template<typename TK, typename TV>
@@ -80,7 +86,7 @@ void server_raft<TK, TV>::start()
     startRequstHandling();
     if (m_status == serverStatus::leader)
         startHeartBeatSending();
-    if (m_status == serverStatus::followeer)
+    if (m_status == serverStatus::follower)
         startHeartBeatWaiting();
 }
 
@@ -89,9 +95,10 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
 {
     clog << request;
 
-    stringstream ss(request);
+    stringstream requestStream(request);
     string method;
-    ss >> method;
+    requestStream >> method;
+
     if (method == "stop")
     {
         m_started = false;
@@ -99,67 +106,146 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
         return "stopped";
     }
 
-    if (m_status == serverStatus::candidate)
+    if (method == "vote")
     {
-        clog << " -> rejected" << endl;
-        return "rejected";
+        stringstream responseStream;
+        switch(m_status)
+        {
+            case serverStatus::candidate:
+                responseStream << m_self;
+                break;
+            default:
+                int vote_term;
+                replica vote_replica;
+                requestStream >> vote_term >> vote_replica;
+                responseStream << vote_replica;
+                break;
+        }
+        clog << " -> " << responseStream.str() << endl;
+        return responseStream.str();
     }
 
-    if (method == "heartBeat" && m_status == serverStatus::followeer)
+    if (method == "hb")
     {
         int leader_term;
         replica leader_replica;
-        ss >> leader_term >> leader_replica;
+        requestStream >> leader_term >> leader_replica;
 
-        stringstream respstream;
-        if (m_term == leader_term)
+
+        stringstream responseStream;
+        switch(m_status)
         {
-            m_leader = leader_replica;
-            respstream << leader_term << " " << m_leader;
-            m_timer.reset();
+            case serverStatus::candidate:
+                m_status = serverStatus::follower;
+                m_term = leader_term;
+                m_leader = leader_replica;
+
+                responseStream << leader_term << " " << m_leader;
+                startHeartBeatWaiting();
+                break;
+            default:
+                if (m_term == leader_term)
+                {
+                    m_leader = leader_replica;
+                    responseStream << leader_term << " " << m_leader;
+                    m_timer.reset();
+                }
+                else
+                {
+                    m_term ++;
+                    m_status = serverStatus::candidate;
+                    responseStream << m_term << " " << m_self;
+                }
+                break;
         }
-        else
-        {
-            m_term ++;
-            m_status = serverStatus::candidate;
-            respstream << m_term << " " << m_self;
-        }
-        clog << " -> " << respstream.str() << endl;
-        return respstream.str();
+        clog << " -> " << responseStream.str() << endl;
+        return responseStream.str();
     }
 
-    TK key;
-    ss >> key;
     if (method == "get")
     {
-        stringstream respstream;
-        respstream << m_store.get(key);
-        clog << " -> " << respstream.str() << endl;
-        return respstream.str();
+        TK key;
+        requestStream >> key;
+        stringstream responseStream;
+        switch(m_status)
+        {
+            case serverStatus::leader:
+                responseStream << m_store.get(key);
+                break;
+            default:
+                responseStream << "redirect " << m_leader;
+                break;
+        }
+        clog << " -> " << responseStream.str() << endl;
+        return responseStream.str();
     }
+
     if (method == "del")
     {
-        m_store.del(key);
-        clog << " -> deleted" << endl;
-        return "deleted";
+        TK key;
+        requestStream >> key;
+        stringstream responseStream;
+        switch(m_status)
+        {
+            case serverStatus::leader:
+                m_store.del(key);
+                responseStream << "deleted";
+                break;
+            default:
+                responseStream << "redirect " << m_leader;
+                break;
+        }
+        clog << " -> " << responseStream.str() << endl;
+        return responseStream.str();
     }
+
     if (method == "set")
     {
+        TK key;
         TV val;
-        ss >> val;
+        requestStream >> key >> val;
+        stringstream forwardingRequestStream;
+        stringstream responseStream;
 
-        if((m_status == serverStatus::leader && isMajority(sendForAll(request), val)) ||
-           (m_status == serverStatus::followeer))
+        switch(m_status)
         {
-            m_store.set(key, val);
-            stringstream respstream;
-            respstream << m_store.get(key);
-            clog << " -> " << respstream.str() << endl;
-            return respstream.str();
+            case serverStatus::leader:
+                forwardingRequestStream << "syncset " << key << " " << val;
+                if (isMajority(sendForAll(forwardingRequestStream.str()), val))
+                {
+                    m_store.set(key, val);
+                    responseStream << m_store.get(key);
+                }
+                else
+                    responseStream << "not applied";
+                break;
+            default:
+                responseStream << "redirect " << m_leader;
+                break;
         }
-        return "not applied";
+        clog << " -> " << responseStream.str() << endl;
+        return responseStream.str();
     }
 
+    if (method == "syncset")
+    {
+        TV val;
+        TK key;
+        requestStream >> key >> val;
+        stringstream responseStream;
+        switch(m_status)
+        {
+            case serverStatus::follower:
+                m_store.set(key, val);
+                responseStream << m_store.get(key);
+                break;
+            default:
+                responseStream << "not applied";
+                break;
+        }
+    }
+
+    clog << " -> undef request" << endl;
     return "undef request";
 }
 
@@ -199,7 +285,7 @@ std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
 }
 
 template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<string>& results, TV val)
+bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, TV val)
 {
     std::stringstream s;
     s << val;
@@ -210,13 +296,22 @@ bool server_raft<TK, TV>::isMajority(const std::vector<string>& results, TV val)
 }
 
 template<typename TK, typename TV>
+bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, std::string val)
+{
+    int ac = 0;
+    for(auto res: results)
+        if (res == val) ++ac;
+    return ac > (results.size() - 1) / 2;
+}
+
+template<typename TK, typename TV>
 void server_raft<TK, TV>::startHeartBeatSending()
 {
     heartBeatSender = std::thread([this](){
         while(m_started && m_status == serverStatus::leader)
         { 
             stringstream message;
-            message << "heartBeat " << m_term << " " << m_self;
+            message << "hb " << m_term << " " << m_self;
             std::vector<string> resps(sendForAll(message.str()));
             std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 500));
         }
@@ -227,14 +322,43 @@ template<typename TK, typename TV>
 void server_raft<TK, TV>::startHeartBeatWaiting()
 {
     m_timer.start();
-
     heartBeatWaiter = std::thread([this](){
-        while(m_started && m_status == serverStatus::followeer)
+        while(m_started && m_status == serverStatus::follower)
         {
             if(m_timer.isExpired())
             {
                 m_status = serverStatus::candidate;
-                cout << "Candidate now!!!!!" << endl;
+                startElection();
+            }
+            else
+            {
+                std::this_thread::yield();
+            }
+        }
+    });
+}
+
+template<typename TK, typename TV>
+void server_raft<TK, TV>::startElection()
+{
+    m_timer.clear();
+    voter = std::thread([this](){
+        while(m_started && m_status == serverStatus::candidate)
+        {
+            if (m_timer.isExpired())
+            {
+                stringstream voteMessage;
+                voteMessage << "vote " << m_term << m_self;
+
+                if (isMajority(sendForAll(voteMessage.str()), m_self.toString()))
+                {
+                    m_status = serverStatus::leader;
+                    startHeartBeatSending();
+                }
+                else
+                {
+                    m_timer.reset();
+                }
             }
             else
             {
