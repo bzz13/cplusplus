@@ -9,7 +9,7 @@ using namespace std;
 int main(int argc, char** argv)
 {
     if (argc != 3) {
-        cerr << "usage: " << argv[0] << " <port> <ip>" << endl;
+        cerr << "usage: " << argv[0] << "<ip> <port>" << endl;
         return 1;
     }
 
@@ -26,7 +26,7 @@ int main(int argc, char** argv)
             break;
 
         TCPConnector connector;
-        auto stream = connector.connect(argv[2], atoi(argv[1]));
+        auto stream = connector.connect(argv[1], atoi(argv[2]));
         if (stream) {
             stream->send(message);
             len = stream->receive(line, sizeof(line));

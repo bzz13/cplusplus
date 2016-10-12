@@ -28,3 +28,5 @@
 *.exe.stackdump
 *.out
 *.app
+
+*.bin

@@ -1,14 +1,13 @@
 #ifndef server_raft_h
 #define server_raft_h
 
-#include <cstdlib>
 #include <string>
 #include <memory>
 #include <sstream>
-#include <time.h>
 #include <thread>
 #include "../replicas/replicas.h"
 #include "../store.h"
+#include "../timer.h"
 #include "../tcp/tcpacceptor.h"
 #include "../tcp/tcpconnector.h"
 #include "../tcp/tcpexception.h"
@@ -26,8 +25,11 @@ class server_raft
     replicas        m_replicas;
     store<TK, TV>   m_store;
 
-    std::thread     heartBeat;
+    std::thread     heartBeatSender;
+    std::thread     heartBeatWaiter;
     std::thread     handler;
+
+    timer           m_timer;
 
     string handleRequest(const std::string&  request);
     std::vector<std::string> sendForAll(const std::string& message);
@@ -45,6 +47,7 @@ public:
 
     void start();
     void startHeartBeatSending();
+    void startHeartBeatWaiting();
     void startRequstHandling();
 };
 
@@ -56,14 +59,14 @@ server_raft<TK, TV>::server_raft(const replica& self, int status, string replica
 {
     if (restore)
         m_store.showStore();
-    srand(time(nullptr));
 }
 
 template<typename TK, typename TV>
 server_raft<TK, TV>::~server_raft()
 {
-    if (heartBeat.joinable()) heartBeat.join();
     if (handler.joinable()) handler.join();
+    if (heartBeatSender.joinable()) heartBeatSender.join();
+    if (heartBeatWaiter.joinable()) heartBeatWaiter.join();
 }
 
 template<typename TK, typename TV>
@@ -77,12 +80,15 @@ void server_raft<TK, TV>::start()
     startRequstHandling();
     if (m_status == serverStatus::leader)
         startHeartBeatSending();
+    if (m_status == serverStatus::followeer)
+        startHeartBeatWaiting();
 }
 
 template<typename TK, typename TV>
 std::string server_raft<TK, TV>::handleRequest(const std::string& request)
 {
     clog << request;
+
     stringstream ss(request);
     string method;
     ss >> method;
@@ -93,9 +99,15 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
         return "stopped";
     }
 
-    if (method == "heartBeat")
+    if (m_status == serverStatus::candidate)
     {
-        int leader_term; 
+        clog << " -> rejected" << endl;
+        return "rejected";
+    }
+
+    if (method == "heartBeat" && m_status == serverStatus::followeer)
+    {
+        int leader_term;
         replica leader_replica;
         ss >> leader_term >> leader_replica;
 
@@ -104,6 +116,7 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
         {
             m_leader = leader_replica;
             respstream << leader_term << " " << m_leader;
+            m_timer.reset();
         }
         else
         {
@@ -193,19 +206,40 @@ bool server_raft<TK, TV>::isMajority(const std::vector<string>& results, TV val)
     int ac = 0;
     for(auto res: results)
         if (res == s.str()) ++ac;
-    return ac > results.size() / 2;
+    return ac > (results.size() - 1) / 2;
 }
 
 template<typename TK, typename TV>
 void server_raft<TK, TV>::startHeartBeatSending()
 {
-    heartBeat = std::thread([this](){
+    heartBeatSender = std::thread([this](){
         while(m_started && m_status == serverStatus::leader)
         { 
             stringstream message;
             message << "heartBeat " << m_term << " " << m_self;
             std::vector<string> resps(sendForAll(message.str()));
-            std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 900 + 100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 500));
+        }
+    });
+}
+
+template<typename TK, typename TV>
+void server_raft<TK, TV>::startHeartBeatWaiting()
+{
+    m_timer.start();
+
+    heartBeatWaiter = std::thread([this](){
+        while(m_started && m_status == serverStatus::followeer)
+        {
+            if(m_timer.isExpired())
+            {
+                m_status = serverStatus::candidate;
+                cout << "Candidate now!!!!!" << endl;
+            }
+            else
+            {
+                std::this_thread::yield();
+            }
         }
     });
 }
