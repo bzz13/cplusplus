@@ -6,7 +6,6 @@
 #include <sstream>
 #include <type_traits>
 #include <thread>
-#include <chrono>
 #include "../replicas/replicas.h"
 #include "../store.h"
 #include "../tcp/tcpacceptor.h"
@@ -28,8 +27,9 @@ class server_raft
     std::thread     heartBeat;
     std::thread     handler;
 
-    string handleRequest(string request);
-
+    string handleRequest(const std::string&  request);
+    std::vector<std::string> sendForAll(const std::string& message);
+    bool isMajority(const std::vector<string>& results, TV val);
 public:
     enum serverStatus
     {
@@ -76,7 +76,7 @@ void server_raft<TK, TV>::start()
 }
 
 template<typename TK, typename TV>
-string server_raft<TK, TV>::handleRequest(string request)
+std::string server_raft<TK, TV>::handleRequest(const std::string& request)
 {
     clog << request;
     stringstream ss(request);
@@ -86,7 +86,7 @@ string server_raft<TK, TV>::handleRequest(string request)
     {
         m_started = false;
         clog << " -> stop" << endl;
-        return string("stopped");
+        return "stopped";
     }
 
     if (method == "heartBeat")
@@ -122,20 +122,69 @@ string server_raft<TK, TV>::handleRequest(string request)
     {
         m_store.del(key);
         clog << " -> deleted" << endl;
-        return string("deleted");
+        return "deleted";
     }
     if (method == "set")
     {
         TV val;
         ss >> val;
-        m_store.set(key, val);
-        stringstream respstream;
-        respstream << m_store.get(key);
-        clog << " -> " << respstream.str() << endl;
-        return respstream.str();
+
+        if((m_status == serverStatus::leader && isMajority(sendForAll(request), val)) ||
+           (m_status == serverStatus::followeer))
+        {
+            m_store.set(key, val);
+            stringstream respstream;
+            respstream << m_store.get(key);
+            clog << " -> " << respstream.str() << endl;
+            return respstream.str();
+        }
+        return "not applied";
     }
 
-    return string("undef request");
+    return "undef request";
+}
+
+template<typename TK, typename TV>
+std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
+{
+    std::vector<std::string> results;
+    TCPConnector connector;
+    std::clog << "begin replication: " << std::endl;
+    for(auto repl: m_replicas)
+    {
+        if (repl.port() == m_port)
+            continue;
+        try
+        {
+            auto stream = connector.connect(repl.host(), repl.port());
+            if (stream)
+            {
+                std::clog << message << std::endl;
+                stream->send(message);
+                char resp[256];
+                auto recieved = stream->receive(resp, 256);
+                resp[recieved] = 0;
+                results.push_back(std::string(resp));
+            }
+        }
+        catch(TCPException& tcpe)
+        {
+            results.push_back("");
+        }
+    }
+    std::clog << "end replication" << std::endl;
+    return results;
+}
+
+template<typename TK, typename TV>
+bool server_raft<TK, TV>::isMajority(const std::vector<string>& results, TV val)
+{
+    std::stringstream s;
+    s << val;
+    int ac = 0;
+    for(auto res: results)
+        if (res == s.str()) ++ac;
+    return ac > results.size() / 2;
 }
 
 template<typename TK, typename TV>
@@ -143,31 +192,10 @@ void server_raft<TK, TV>::startHeartBeatSending()
 {
     heartBeat = std::thread([this](){
         while(m_started && m_status == serverStatus::leader)
-        {
-            TCPConnector connector;
-            for(auto repl: m_replicas)
-            {
-                if (repl.port() == m_port)
-                    continue;
-                try
-                {
-                    auto stream = connector.connect(repl.host(), repl.port());
-                    if (stream)
-                    {
-                        stringstream message;
-                        message << "heartBeat " << m_term << " " << m_port;
-                        std::clog << message.str() << std::endl;
-                        stream->send(message.str());
-                        char resp[256];
-                        stream->receive(resp, 256);
-                        std::clog << resp << std::endl;
-                    }
-                }
-                catch(TCPException& tcpe)
-                {
-                    std::cerr << "hb " << tcpe.what() << std::endl;
-                }
-            }
+        { 
+            stringstream message;
+            message << "heartBeat " << m_term << " " << m_port;
+            std::vector<string> resps(sendForAll(message.str()));
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     });

@@ -21,7 +21,12 @@ int main(int argc, char** argv)
 
 	//port status replicas log restore(1)
 
-	server_raft<int, int> raft(atoi(argv[1]), atoi(argv[2]), argv[3], argv[4], atoi(argv[5]) > 0);
+	if (argc != 6)
+	{
+		std::cerr << "usage: server <int port> <int status> <string replicaspath> <string logpath> <bool restore 1=true>" << std::endl;
+		return 1;
+	}
+	server_raft<int, int> raft(atoi(argv[1]), atoi(argv[2]), argv[3], argv[4], atoi(argv[5]) == 1);
 	raft.start();
 
 	return 0;

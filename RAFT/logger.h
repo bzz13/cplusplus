@@ -87,6 +87,7 @@ void logger<T>::set(const unsigned int& i, const T& t)
 		if (i <= maxIdx && !f.seekp(sizeof(T)*i, f.beg).fail())
 		{
 			f.write((char*) &t, sizeof(T));
+			f.flush();
 			if (i == maxIdx)
 				++maxIdx;
 		}
