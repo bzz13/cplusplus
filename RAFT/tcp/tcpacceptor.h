@@ -2,6 +2,7 @@
 
 #include "tcpstream.h"
 #include "tcpsocket.h"
+#include "../replicas/replica.h"
 #include <string>
 #include <memory>
 
@@ -13,6 +14,7 @@ class TCPAcceptor
     bool        m_listning = false;
 
 public:
+	TCPAcceptor(const replica& self);
     TCPAcceptor(int port, const std::string& address = "");
     TCPAcceptor(int port, const char* address);
 

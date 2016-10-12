@@ -15,6 +15,11 @@ TCPAcceptor::TCPAcceptor(int port, const char* address)
 {
 }
 
+TCPAcceptor::TCPAcceptor(const replica& self)
+    : TCPAcceptor(self.port(), self.host())
+{
+}
+
 bool TCPAcceptor::start()
 {
     if (m_listning == true)

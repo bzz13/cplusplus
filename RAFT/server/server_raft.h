@@ -1,10 +1,11 @@
 #ifndef server_raft_h
 #define server_raft_h
 
+#include <cstdlib>
 #include <string>
 #include <memory>
 #include <sstream>
-#include <type_traits>
+#include <time.h>
 #include <thread>
 #include "../replicas/replicas.h"
 #include "../store.h"
@@ -19,8 +20,9 @@ class server_raft
 {
     int             m_term;
     int             m_status = serverStatus::followeer;
-    int             m_port;
     bool            m_started;
+    replica         m_self;
+    replica         m_leader;
     replicas        m_replicas;
     store<TK, TV>   m_store;
 
@@ -38,7 +40,7 @@ public:
         leader = 2,
     };
 
-    server_raft(int port, int status, string replicaspath, string logpath, bool restore = false);
+    server_raft(const replica& self, int status, string replicaspath, string logpath, bool restore = false);
     ~server_raft();
 
     void start();
@@ -47,12 +49,14 @@ public:
 };
 
 template<typename TK, typename TV>
-server_raft<TK, TV>::server_raft(int port, int status, string replicaspath, string logpath, bool restore)
-    : m_term(1), m_port(port), m_status(status), m_started(false),
-      m_replicas(replicaspath), m_store(logpath, restore)
+server_raft<TK, TV>::server_raft(const replica& self, int status, string replicaspath, string logpath, bool restore)
+    : m_term(1), m_status(status), m_started(false),
+      m_self(self), m_leader(self), m_replicas(replicaspath),
+      m_store(logpath, restore)
 {
     if (restore)
         m_store.showStore();
+    srand(time(nullptr));
 }
 
 template<typename TK, typename TV>
@@ -91,19 +95,21 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
 
     if (method == "heartBeat")
     {
-        int leader_term; int leader_port;
-        ss >> leader_term >> leader_port;
+        int leader_term; 
+        replica leader_replica;
+        ss >> leader_term >> leader_replica;
 
         stringstream respstream;
         if (m_term == leader_term)
         {
-            respstream << leader_term << " " << leader_port;
+            m_leader = leader_replica;
+            respstream << leader_term << " " << m_leader;
         }
         else
         {
             m_term ++;
             m_status = serverStatus::candidate;
-            respstream << m_term << " " << m_port;
+            respstream << m_term << " " << m_self;
         }
         clog << " -> " << respstream.str() << endl;
         return respstream.str();
@@ -149,30 +155,33 @@ std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
 {
     std::vector<std::string> results;
     TCPConnector connector;
-    std::clog << "begin replication: " << std::endl;
     for(auto repl: m_replicas)
     {
-        if (repl.port() == m_port)
+        if (repl == m_self)
             continue;
         try
         {
-            auto stream = connector.connect(repl.host(), repl.port());
+            auto stream = connector.connect(repl);
             if (stream)
             {
                 std::clog << message << std::endl;
                 stream->send(message);
-                char resp[256];
-                auto recieved = stream->receive(resp, 256);
-                resp[recieved] = 0;
-                results.push_back(std::string(resp));
+                ssize_t len;
+                char line[256];
+                if ((len = stream->receive(line, sizeof(line))) > 0) {
+                    line[len] = 0;
+                    results.push_back(std::string(line));
+                }
+                else throw TCPException("can't read result");
             }
+            else throw TCPException("can't connect");
         }
         catch(TCPException& tcpe)
         {
+            std::clog << "error from " << repl << ": " << tcpe.what() << std::endl;
             results.push_back("");
         }
     }
-    std::clog << "end replication" << std::endl;
     return results;
 }
 
@@ -194,9 +203,9 @@ void server_raft<TK, TV>::startHeartBeatSending()
         while(m_started && m_status == serverStatus::leader)
         { 
             stringstream message;
-            message << "heartBeat " << m_term << " " << m_port;
+            message << "heartBeat " << m_term << " " << m_self;
             std::vector<string> resps(sendForAll(message.str()));
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 900 + 100));
         }
     });
 }
@@ -205,7 +214,7 @@ template<typename TK, typename TV>
 void server_raft<TK, TV>::startRequstHandling()
 {
     handler = std::thread([this](){
-        TCPAcceptor acceptor(m_port);
+        TCPAcceptor acceptor(m_self);
         m_started = acceptor.start();
         while (m_started)
         {
