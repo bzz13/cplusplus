@@ -1,3 +1,6 @@
+rm -f server_raft_leader.exe server_raft_follower.exe client_raft.exe
+rm -f r1/server_raft_follower.exe r2/server_raft_follower.exe r3/server_raft_follower.exe
+
 # g++ -std=c++11 client/client.cpp tcp/tcpacceptor.cpp tcp/tcpstream.cpp tcp/tcpconnector.cpp -o client
 # g++ -std=c++11 client/client_timeout.cpp tcp/tcpacceptor.cpp tcp/tcpstream.cpp tcp/tcpconnector.cpp -o client_timeout
 # g++ -std=c++11 server/server.cpp tcp/tcpacceptor.cpp tcp/tcpstream.cpp tcp/tcpconnector.cpp -o server
@@ -12,3 +15,7 @@ g++ -std=c++11 test.cpp tcp/tcpsocket.cpp tcp/tcpacceptor.cpp tcp/tcpstream.cpp 
 
 g++ -std=c++11 client/client_raft.cpp tcp/tcpsocket.cpp tcp/tcpacceptor.cpp tcp/tcpstream.cpp tcp/tcpconnector.cpp -o client_raft
 # ./client_raft.exe 127.0.0.1 3535
+
+cp server_raft_follower.exe r1/server_raft_follower.exe
+cp server_raft_follower.exe r2/server_raft_follower.exe
+cp server_raft_follower.exe r3/server_raft_follower.exe

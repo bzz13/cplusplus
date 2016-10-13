@@ -78,7 +78,7 @@ server_raft<TK, TV>::~server_raft()
 template<typename TK, typename TV>
 void server_raft<TK, TV>::start()
 {
-    std::cout << "current term " << m_term << std::endl;
+    clog << "!!!!!NOW FOLLOWER!!!" << endl;
     if (m_started)
         return;
 
@@ -136,7 +136,7 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
         switch(m_status)
         {
             case serverStatus::candidate:
-                m_status = serverStatus::follower;
+                m_status = serverStatus::follower; clog << "!!!!!NOW FOLLOWER!!!" << endl;
                 m_term = leader_term;
                 m_leader = leader_replica;
 
@@ -153,7 +153,7 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
                 else
                 {
                     m_term ++;
-                    m_status = serverStatus::candidate;
+                    m_status = serverStatus::candidate; clog << "!!!!!NOW CANDIDATE!!!" << endl;
                     responseStream << m_term << " " << m_self;
                 }
                 break;
@@ -243,6 +243,8 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
                 responseStream << "not applied";
                 break;
         }
+        clog << " -> " << responseStream.str() << endl;
+        return responseStream.str();
     }
 
     clog << " -> undef request" << endl;
@@ -327,7 +329,7 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
         {
             if(m_timer.isExpired())
             {
-                m_status = serverStatus::candidate;
+                m_status = serverStatus::candidate; clog << "!!!!!NOW CANDIDATE!!!" << endl;
                 startElection();
             }
             else
@@ -348,11 +350,11 @@ void server_raft<TK, TV>::startElection()
             if (m_timer.isExpired())
             {
                 stringstream voteMessage;
-                voteMessage << "vote " << m_term << m_self;
+                voteMessage << "vote " << m_term << " " << m_self;
 
                 if (isMajority(sendForAll(voteMessage.str()), m_self.toString()))
                 {
-                    m_status = serverStatus::leader;
+                    m_status = serverStatus::leader; clog << "!!!!!NOW LEADER!!!" << endl;
                     startHeartBeatSending();
                 }
                 else
