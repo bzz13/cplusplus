@@ -1,5 +1,4 @@
-#ifndef server_raft_h
-#define server_raft_h
+#pragma once
 
 #include <string>
 #include <memory>
@@ -18,7 +17,7 @@ template<typename TK, typename TV>
 class server_raft
 {
     int             m_term;
-    int             m_status = serverStatus::follower;
+    int             m_status;
     bool            m_started;
     replica         m_self;
     replica         m_leader;
@@ -28,9 +27,11 @@ class server_raft
     std::thread     heartBeatSender;
     std::thread     heartBeatWaiter;
     std::thread     handler;
-    std::thread     voter;
 
     timer           m_timer;
+
+    std::unique_ptr<replica>    m_vote_for_replica;
+    std::unique_ptr<int>        m_vote_for_term;
 
     string handleRequest(const std::string&  request);
     std::vector<std::string> sendForAll(const std::string& message);
@@ -45,20 +46,19 @@ public:
         leader = 2,
     };
 
-    server_raft(const replica& self, int status, string replicaspath, string logpath, bool restore = false);
+    server_raft(const replica& self, string replicaspath, string logpath, bool restore = false);
     ~server_raft();
 
     void start();
     void startHeartBeatSending();
     void startHeartBeatWaiting();
-    void startElection();
 
     void startRequstHandling();
 };
 
 template<typename TK, typename TV>
-server_raft<TK, TV>::server_raft(const replica& self, int status, string replicaspath, string logpath, bool restore)
-    : m_term(1), m_status(status), m_started(false),
+server_raft<TK, TV>::server_raft(const replica& self, string replicaspath, string logpath, bool restore)
+    : m_term(1), m_status(serverStatus::follower), m_started(false),
       m_self(self), m_leader(self), m_replicas(replicaspath),
       m_store(logpath, restore)
 {
@@ -72,7 +72,6 @@ server_raft<TK, TV>::~server_raft()
     if (handler.joinable()) handler.join();
     if (heartBeatSender.joinable()) heartBeatSender.join();
     if (heartBeatWaiter.joinable()) heartBeatWaiter.join();
-    if (voter.joinable()) voter.join();
 }
 
 template<typename TK, typename TV>
@@ -84,10 +83,141 @@ void server_raft<TK, TV>::start()
 
     m_started = true;
     startRequstHandling();
-    if (m_status == serverStatus::leader)
-        startHeartBeatSending();
-    if (m_status == serverStatus::follower)
-        startHeartBeatWaiting();
+    startHeartBeatWaiting();
+}
+
+template<typename TK, typename TV>
+std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
+{
+    std::vector<std::string> results;
+    TCPConnector connector;
+    for(auto repl: m_replicas)
+    {
+        if (repl == m_self)
+            continue;
+        try
+        {
+            auto stream = connector.connect(repl);
+            if (stream)
+            {
+                std::clog << message << std::endl;
+                stream->send(message);
+                ssize_t len;
+                char line[256];
+                if ((len = stream->receive(line, sizeof(line))) > 0) {
+                    line[len] = 0;
+                    results.push_back(std::string(line));
+                }
+                else throw TCPException("can't read result");
+            }
+            else throw TCPException("can't connect");
+        }
+        catch(TCPException& tcpe)
+        {
+            std::clog << "error from " << repl << ": " << tcpe.what() << std::endl;
+            results.push_back("");
+        }
+    }
+    return results;
+}
+
+template<typename TK, typename TV>
+bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, TV val)
+{
+    std::stringstream s;
+    s << val;
+    int ac = 0;
+    for(auto res: results)
+        if (res == s.str()) ++ac;
+    return ac > (results.size() - 1) / 2;
+}
+
+template<typename TK, typename TV>
+bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, std::string val)
+{
+    int ac = 0;
+    for(auto res: results)
+        if (res == val) ++ac;
+    return ac > (results.size() - 1) / 2;
+}
+
+template<typename TK, typename TV>
+void server_raft<TK, TV>::startHeartBeatSending()
+{
+    if (!heartBeatSender.joinable())
+    {
+        heartBeatSender = std::thread([this](){
+            while(m_started && m_status == serverStatus::leader)
+            { 
+                stringstream message;
+                message << "hb " << m_term << " " << m_self;
+                std::vector<string> resps(sendForAll(message.str()));
+                std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 500));
+            }
+        });
+    }
+}
+
+template<typename TK, typename TV>
+void server_raft<TK, TV>::startHeartBeatWaiting()
+{
+    m_timer.start();
+    if (!heartBeatWaiter.joinable())
+    {
+        heartBeatWaiter = std::thread([this](){
+            while(m_started)
+            {
+                if(m_status == serverStatus::follower && m_timer.isExpired())
+                {
+                    m_term++;
+                    m_status = serverStatus::candidate; clog << "!!!!!NOW CANDIDATE!!!" << endl;
+                    
+                    {
+                        stringstream voteMessage;
+                        voteMessage << "vote " << m_term << " " << m_self;
+
+                        if (isMajority(sendForAll(voteMessage.str()), m_self.toString()))
+                        {
+                            m_status = serverStatus::leader; clog << "!!!!!NOW LEADER!!!" << endl;
+                            startHeartBeatSending();
+                        }
+                        else
+                        {
+                            m_status = serverStatus::follower; clog << "!!!!!NOW FOLLOWER!!!" << endl;
+                            startHeartBeatWaiting();
+                            m_timer.reset();
+                        }
+                    }
+                }
+                else
+                {
+                    std::this_thread::yield();
+                }
+            }
+        });
+    }
+}
+
+template<typename TK, typename TV>
+void server_raft<TK, TV>::startRequstHandling()
+{
+    handler = std::thread([this](){
+        TCPAcceptor acceptor(m_self);
+        m_started = acceptor.start();
+        while (m_started)
+        {
+            auto stream = acceptor.accept();
+            if (stream) {
+                ssize_t len;
+                char line[256];
+                while ((len = stream->receive(line, sizeof(line))) > 0) {
+                    line[len] = 0;
+                    string response = handleRequest(string(line));
+                    stream->send(response);
+                }
+            }
+        }
+    });
 }
 
 template<typename TK, typename TV>
@@ -108,19 +238,25 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
 
     if (method == "vote")
     {
+        int vote_term;
+        replica vote_replica;
+        requestStream >> vote_term >> vote_replica;
         stringstream responseStream;
+
         switch(m_status)
         {
             case serverStatus::candidate:
-                responseStream << m_self;
-                break;
-            default:
-                int vote_term;
-                replica vote_replica;
-                requestStream >> vote_term >> vote_replica;
-                responseStream << vote_replica;
+                m_vote_for_replica = std::move(unique_ptr<replica>(new replica(m_self)));
+                m_vote_for_term = std::move(unique_ptr<int>(new int(m_term)));
                 break;
         }
+        if (!m_vote_for_replica || !m_vote_for_term || *m_vote_for_term > vote_term)
+        {
+            m_vote_for_replica = std::move(unique_ptr<replica>(new replica(vote_replica)));
+            m_vote_for_term = std::move(unique_ptr<int>(new int(vote_term)));
+        }
+        responseStream << *m_vote_for_replica;
+
         clog << " -> " << responseStream.str() << endl;
         return responseStream.str();
     }
@@ -141,7 +277,6 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
                 m_leader = leader_replica;
 
                 responseStream << leader_term << " " << m_leader;
-                startHeartBeatWaiting();
                 break;
             default:
                 if (m_term == leader_term)
@@ -250,146 +385,3 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
     clog << " -> undef request" << endl;
     return "undef request";
 }
-
-template<typename TK, typename TV>
-std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
-{
-    std::vector<std::string> results;
-    TCPConnector connector;
-    for(auto repl: m_replicas)
-    {
-        if (repl == m_self)
-            continue;
-        try
-        {
-            auto stream = connector.connect(repl);
-            if (stream)
-            {
-                std::clog << message << std::endl;
-                stream->send(message);
-                ssize_t len;
-                char line[256];
-                if ((len = stream->receive(line, sizeof(line))) > 0) {
-                    line[len] = 0;
-                    results.push_back(std::string(line));
-                }
-                else throw TCPException("can't read result");
-            }
-            else throw TCPException("can't connect");
-        }
-        catch(TCPException& tcpe)
-        {
-            std::clog << "error from " << repl << ": " << tcpe.what() << std::endl;
-            results.push_back("");
-        }
-    }
-    return results;
-}
-
-template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, TV val)
-{
-    std::stringstream s;
-    s << val;
-    int ac = 0;
-    for(auto res: results)
-        if (res == s.str()) ++ac;
-    return ac > (results.size() - 1) / 2;
-}
-
-template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, std::string val)
-{
-    int ac = 0;
-    for(auto res: results)
-        if (res == val) ++ac;
-    return ac > (results.size() - 1) / 2;
-}
-
-template<typename TK, typename TV>
-void server_raft<TK, TV>::startHeartBeatSending()
-{
-    heartBeatSender = std::thread([this](){
-        while(m_started && m_status == serverStatus::leader)
-        { 
-            stringstream message;
-            message << "hb " << m_term << " " << m_self;
-            std::vector<string> resps(sendForAll(message.str()));
-            std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 500));
-        }
-    });
-}
-
-template<typename TK, typename TV>
-void server_raft<TK, TV>::startHeartBeatWaiting()
-{
-    m_timer.start();
-    heartBeatWaiter = std::thread([this](){
-        while(m_started && m_status == serverStatus::follower)
-        {
-            if(m_timer.isExpired())
-            {
-                m_status = serverStatus::candidate; clog << "!!!!!NOW CANDIDATE!!!" << endl;
-                startElection();
-            }
-            else
-            {
-                std::this_thread::yield();
-            }
-        }
-    });
-}
-
-template<typename TK, typename TV>
-void server_raft<TK, TV>::startElection()
-{
-    m_timer.clear();
-    voter = std::thread([this](){
-        while(m_started && m_status == serverStatus::candidate)
-        {
-            if (m_timer.isExpired())
-            {
-                stringstream voteMessage;
-                voteMessage << "vote " << m_term << " " << m_self;
-
-                if (isMajority(sendForAll(voteMessage.str()), m_self.toString()))
-                {
-                    m_status = serverStatus::leader; clog << "!!!!!NOW LEADER!!!" << endl;
-                    startHeartBeatSending();
-                }
-                else
-                {
-                    m_timer.reset();
-                }
-            }
-            else
-            {
-                std::this_thread::yield();
-            }
-        }
-    });
-}
-
-template<typename TK, typename TV>
-void server_raft<TK, TV>::startRequstHandling()
-{
-    handler = std::thread([this](){
-        TCPAcceptor acceptor(m_self);
-        m_started = acceptor.start();
-        while (m_started)
-        {
-            auto stream = acceptor.accept();
-            if (stream) {
-                ssize_t len;
-                char line[256];
-                while ((len = stream->receive(line, sizeof(line))) > 0) {
-                    line[len] = 0;
-                    string response = handleRequest(string(line));
-                    stream->send(response);
-                }
-            }
-        }
-    });
-}
-
-#endif

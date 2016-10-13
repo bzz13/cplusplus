@@ -22,14 +22,14 @@ int main(int argc, char** argv)
 
 	//port status replicas log restore(1)
 
-	if (argc != 7)
+	if (argc != 6)
 	{
-		std::cerr << "usage: server <string hosthame> <int port> <int status> <string replicaspath> <string logpath> <bool restore 1=true>" << std::endl;
+		std::cerr << "usage: server <string hosthame> <int port> <string replicaspath> <string logpath> <bool restore 1=true>" << std::endl;
 		return 1;
 	}
 
 	replica self(argv[1], atoi(argv[2]));
-	server_raft<int, int> raft(self, atoi(argv[3]), argv[4], argv[5], atoi(argv[6]) == 1);
+	server_raft<int, int> raft(self, argv[3], argv[4], atoi(argv[5]) == 1);
 	raft.start();
 
 	return 0;
