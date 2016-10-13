@@ -4,6 +4,7 @@
 #include <memory>
 #include <sstream>
 #include <thread>
+#include <mutex>
 #include "../replicas/replicas.h"
 #include "../store.h"
 #include "../timer.h"
@@ -28,6 +29,8 @@ class server_raft
     std::thread     heartBeatWaiter;
     std::thread     handler;
 
+    std::mutex      m_mtx;
+
     timer           m_timer;
 
     std::unique_ptr<replica>    m_vote_for_replica;
@@ -35,9 +38,10 @@ class server_raft
 
     string handleRequest(const std::string&  request);
     std::vector<std::string> sendForAll(const std::string& message);
+    std::vector<std::string> sendForAll(const std::string& message, const std::string& selfResponse);
 
-    bool isMajority(const std::vector<std::string>& results, std::string val);
-    bool isMajority(const std::vector<std::string>& results, TV val);
+    bool isMajority(const std::vector<std::string>& results, const std::string& val);
+    bool isMajority(const std::vector<std::string>& results, const TV& val);
 public:
     enum serverStatus
     {
@@ -122,23 +126,24 @@ std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
 }
 
 template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, TV val)
+bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, const TV& val)
 {
     std::stringstream s;
     s << val;
+    std::string ss(s.str());
     int ac = 0;
     for(auto res: results)
-        if (res == s.str()) ++ac;
-    return ac > (results.size() - 1) / 2;
+        if (res == ss) ++ac;
+    return ac >= results.size() - ac;
 }
 
 template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, std::string val)
+bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, const std::string& val)
 {
     int ac = 0;
     for(auto res: results)
         if (res == val) ++ac;
-    return ac > (results.size() - 1) / 2;
+    return ac >= results.size() - ac;
 }
 
 template<typename TK, typename TV>
@@ -147,12 +152,22 @@ void server_raft<TK, TV>::startHeartBeatSending()
     if (!heartBeatSender.joinable())
     {
         heartBeatSender = std::thread([this](){
-            while(m_started && m_status == serverStatus::leader)
-            { 
-                stringstream message;
-                message << "hb " << m_term << " " << m_self;
-                std::vector<string> resps(sendForAll(message.str()));
-                std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 500));
+            while(m_started)
+            {
+                m_mtx.lock();
+                if (m_status == serverStatus::leader)
+                {
+                    stringstream message;
+                    message << "hb " << m_term << " " << m_self;
+                    std::vector<string> resps(sendForAll(message.str()));
+                    m_mtx.unlock();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 250));
+                }
+                else
+                {
+                    m_mtx.unlock();
+                    std::this_thread::yield();
+                }
             }
         });
     }
@@ -167,11 +182,11 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
         heartBeatWaiter = std::thread([this](){
             while(m_started)
             {
+                m_mtx.lock();
                 if(m_status == serverStatus::follower && m_timer.isExpired())
                 {
                     m_term++;
                     m_status = serverStatus::candidate; clog << "!!!!!NOW CANDIDATE!!!" << endl;
-                    
                     {
                         stringstream voteMessage;
                         voteMessage << "vote " << m_term << " " << m_self;
@@ -185,12 +200,13 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
                         {
                             m_status = serverStatus::follower; clog << "!!!!!NOW FOLLOWER!!!" << endl;
                             startHeartBeatWaiting();
-                            m_timer.reset();
                         }
                     }
+                    m_mtx.unlock();
                 }
                 else
                 {
+                    m_mtx.unlock();
                     std::this_thread::yield();
                 }
             }
@@ -266,7 +282,6 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
         int leader_term;
         replica leader_replica;
         requestStream >> leader_term >> leader_replica;
-
 
         stringstream responseStream;
         switch(m_status)
