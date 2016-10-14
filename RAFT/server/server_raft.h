@@ -11,12 +11,23 @@
 #include "../tcp/tcpacceptor.h"
 #include "../tcp/tcpconnector.h"
 #include "../tcp/tcpexception.h"
+#include "../rpc/server_proto_operation.h"
+#include "../rpc/server_proto_parser.h"
 
 using namespace std;
 
 template<typename TK, typename TV>
 class server_raft
 {
+    friend class server_proto_undef<TK, TV>;
+    friend class server_proto_stop<TK, TV>;
+    friend class server_proto_vote<TK, TV>;
+    friend class server_proto_heartbeat<TK, TV>;
+    friend class server_proto_get<TK, TV>;
+    friend class server_proto_del<TK, TV>;
+    friend class server_proto_set<TK, TV>;
+    friend class server_proto_syncset<TK, TV>;
+
     int             m_term;
     int             m_status;
     bool            m_started;
@@ -41,7 +52,7 @@ class server_raft
     std::vector<std::string> sendForAll(const std::string& message, const std::string& selfResponse);
 
     bool isMajority(const std::vector<std::string>& results, const std::string& val);
-    bool isMajority(const std::vector<std::string>& results, const TV& val);
+    bool isMajority(const std::vector<std::string>& results, TV& val);
 public:
     enum serverStatus
     {
@@ -126,7 +137,7 @@ std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
 }
 
 template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, const TV& val)
+bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, TV& val)
 {
     std::stringstream s;
     s << val;
@@ -241,162 +252,10 @@ std::string server_raft<TK, TV>::handleRequest(const std::string& request)
 {
     clog << request;
 
-    stringstream requestStream(request);
-    string method;
-    requestStream >> method;
+    server_proto_parser<TK, TV> parser;
+    auto server_proto_op = parser.parse(request);
+    std::string result(server_proto_op->applyTo(this));
 
-    if (method == "stop")
-    {
-        m_started = false;
-        clog << " -> stop" << endl;
-        return "stopped";
-    }
-
-    if (method == "vote")
-    {
-        int vote_term;
-        replica vote_replica;
-        requestStream >> vote_term >> vote_replica;
-        stringstream responseStream;
-
-        switch(m_status)
-        {
-            case serverStatus::candidate:
-                m_vote_for_replica = std::move(unique_ptr<replica>(new replica(m_self)));
-                m_vote_for_term = std::move(unique_ptr<int>(new int(m_term)));
-                break;
-        }
-        if (!m_vote_for_replica || !m_vote_for_term || *m_vote_for_term > vote_term)
-        {
-            m_vote_for_replica = std::move(unique_ptr<replica>(new replica(vote_replica)));
-            m_vote_for_term = std::move(unique_ptr<int>(new int(vote_term)));
-        }
-        responseStream << *m_vote_for_replica;
-
-        clog << " -> " << responseStream.str() << endl;
-        return responseStream.str();
-    }
-
-    if (method == "hb")
-    {
-        int leader_term;
-        replica leader_replica;
-        requestStream >> leader_term >> leader_replica;
-
-        stringstream responseStream;
-        switch(m_status)
-        {
-            case serverStatus::candidate:
-                m_status = serverStatus::follower; clog << "!!!!!NOW FOLLOWER!!!" << endl;
-                m_term = leader_term;
-                m_leader = leader_replica;
-
-                responseStream << leader_term << " " << m_leader;
-                break;
-            default:
-                if (m_term == leader_term)
-                {
-                    m_leader = leader_replica;
-                    responseStream << leader_term << " " << m_leader;
-                    m_timer.reset();
-                }
-                else
-                {
-                    m_term ++;
-                    m_status = serverStatus::candidate; clog << "!!!!!NOW CANDIDATE!!!" << endl;
-                    responseStream << m_term << " " << m_self;
-                }
-                break;
-        }
-        clog << " -> " << responseStream.str() << endl;
-        return responseStream.str();
-    }
-
-    if (method == "get")
-    {
-        TK key;
-        requestStream >> key;
-        stringstream responseStream;
-        switch(m_status)
-        {
-            case serverStatus::leader:
-                responseStream << m_store.get(key);
-                break;
-            default:
-                responseStream << "redirect " << m_leader;
-                break;
-        }
-        clog << " -> " << responseStream.str() << endl;
-        return responseStream.str();
-    }
-
-    if (method == "del")
-    {
-        TK key;
-        requestStream >> key;
-        stringstream responseStream;
-        switch(m_status)
-        {
-            case serverStatus::leader:
-                m_store.del(key);
-                responseStream << "deleted";
-                break;
-            default:
-                responseStream << "redirect " << m_leader;
-                break;
-        }
-        clog << " -> " << responseStream.str() << endl;
-        return responseStream.str();
-    }
-
-    if (method == "set")
-    {
-        TK key;
-        TV val;
-        requestStream >> key >> val;
-        stringstream forwardingRequestStream;
-        stringstream responseStream;
-
-        switch(m_status)
-        {
-            case serverStatus::leader:
-                forwardingRequestStream << "syncset " << key << " " << val;
-                if (isMajority(sendForAll(forwardingRequestStream.str()), val))
-                {
-                    m_store.set(key, val);
-                    responseStream << m_store.get(key);
-                }
-                else
-                    responseStream << "not applied";
-                break;
-            default:
-                responseStream << "redirect " << m_leader;
-                break;
-        }
-        clog << " -> " << responseStream.str() << endl;
-        return responseStream.str();
-    }
-
-    if (method == "syncset")
-    {
-        TV val;
-        TK key;
-        requestStream >> key >> val;
-        stringstream responseStream;
-        switch(m_status)
-        {
-            case serverStatus::follower:
-                m_store.set(key, val);
-                responseStream << m_store.get(key);
-                break;
-            default:
-                responseStream << "not applied";
-                break;
-        }
-        clog << " -> " << responseStream.str() << endl;
-        return responseStream.str();
-    }
-
-    clog << " -> undef request" << endl;
-    return "undef request";
+    clog << " -> " << result << std::endl;
+    return result;
 }

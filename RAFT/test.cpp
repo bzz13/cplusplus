@@ -29,7 +29,7 @@ int main(int argc, char** argv)
 	}
 
 	replica self(argv[1], atoi(argv[2]));
-	server_raft<int, int> raft(self, argv[3], argv[4], atoi(argv[5]) == 1);
+	server_raft<std::string, int> raft(self, argv[3], argv[4], atoi(argv[5]) == 1);
 	raft.start();
 
 	return 0;
