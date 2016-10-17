@@ -6,7 +6,7 @@
 
 class TCPStream
 {
-    std::unique_ptr<TCPSocket> m_socket;
+    std::shared_ptr<TCPSocket> m_socket;
 
 public:
     friend class TCPAcceptor;
@@ -14,9 +14,9 @@ public:
 
     ssize_t send(const char* buffer, size_t length);
     ssize_t send(const std::string& message);
-    ssize_t receive(char* buffer, size_t length, unsigned int timeout = 0);
+    ssize_t receive(char* buffer, size_t length, unsigned int timeout_ms = 0);
 
 private:
     TCPStream(TCPSocket* socket);
-    TCPStream(std::unique_ptr<TCPSocket>& socket);
+    TCPStream(std::shared_ptr<TCPSocket>& socket);
 };

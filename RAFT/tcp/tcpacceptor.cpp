@@ -32,10 +32,10 @@ bool TCPAcceptor::start()
     return m_listning;
 }
 
-std::unique_ptr<TCPStream> TCPAcceptor::accept()
+std::shared_ptr<TCPStream> TCPAcceptor::accept()
 {
     if (m_listning == false)
         throw TCPException("accept() failed - not listning");
-    return std::unique_ptr<TCPStream>(
+    return std::shared_ptr<TCPStream>(
         new TCPStream(m_listning_socket.accept()));
 }

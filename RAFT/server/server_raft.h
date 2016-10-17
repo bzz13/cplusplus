@@ -13,6 +13,7 @@
 #include "../tcp/tcpexception.h"
 #include "../rpc/server_proto_operation.h"
 #include "../rpc/server_proto_parser.h"
+#include "server_raft_receiver.h"
 
 using namespace std;
 
@@ -28,26 +29,25 @@ class server_raft
     friend class server_proto_set<TK, TV>;
     friend class server_proto_syncset<TK, TV>;
 
-    int             m_term;
-    int             m_status;
-    bool            m_started;
-    replica         m_self;
-    replica         m_leader;
-    replicas        m_replicas;
-    store<TK, TV>   m_store;
+    int                             m_term;
+    int                             m_status;
+    bool                            m_started;
+    replica                         m_self;
+    replica                         m_leader;
+    replicas                        m_replicas;
+    store<TK, TV>                   m_store;
+    server_raft_receiver<TK, TV>    m_receiver;
 
     std::thread     heartBeatSender;
     std::thread     heartBeatWaiter;
     std::thread     handler;
 
     std::mutex      m_mtx;
-
     timer           m_timer;
 
     std::unique_ptr<replica>    m_vote_for_replica;
     std::unique_ptr<int>        m_vote_for_term;
 
-    string handleRequest(const std::string&  request);
     std::vector<std::string> sendForAll(const std::string& message, const std::string& selfResponse);
     std::vector<std::string> sendForAll(const std::string& message, TV& selfResponseTV);
 
@@ -74,7 +74,7 @@ template<typename TK, typename TV>
 server_raft<TK, TV>::server_raft(const replica& self, string replicaspath, string logpath, bool restore)
     : m_term(1), m_status(serverStatus::follower), m_started(false),
       m_self(self), m_leader(self), m_replicas(replicaspath),
-      m_store(logpath, restore)
+      m_store(logpath, restore), m_receiver(self)
 {
     if (restore)
         m_store.showStore();
@@ -97,6 +97,9 @@ void server_raft<TK, TV>::start()
     clog << "!!!!!NOW FOLLOWER!!!" << endl;
 
     m_started = true;
+    m_receiver.startRequestReciving();
+
+
     startRequstHandling();
     startHeartBeatWaiting();
     startHeartBeatSending();
@@ -273,33 +276,18 @@ template<typename TK, typename TV>
 void server_raft<TK, TV>::startRequstHandling()
 {
     handler = std::thread([this](){
-        TCPAcceptor acceptor(m_self);
-        m_started = acceptor.start();
         while (m_started)
         {
-            auto stream = acceptor.accept();
-            if (stream) {
-                ssize_t len;
-                char line[256];
-                while ((len = stream->receive(line, sizeof(line))) > 0) {
-                    line[len] = 0;
-                    string response = handleRequest(string(line));
-                    stream->send(response);
-                }
+            if (m_receiver.hasRequest()) {
+                auto r = m_receiver.getRequest();
+                auto stream = r.first;
+                auto operation = r.second;
+                auto response = operation->applyTo(this);
+                clog << ">>> " << response << endl;
+                stream->send(response);
             }
+            else
+                std::this_thread::yield();
         }
     });
-}
-
-template<typename TK, typename TV>
-std::string server_raft<TK, TV>::handleRequest(const std::string& request)
-{
-    clog << request;
-
-    server_proto_parser<TK, TV> parser;
-    auto server_proto_op = parser.parse(request);
-    std::string result(server_proto_op->applyTo(this));
-
-    clog << " -> " << result << std::endl;
-    return result;
 }

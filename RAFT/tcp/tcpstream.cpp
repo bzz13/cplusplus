@@ -5,8 +5,8 @@ TCPStream::TCPStream(TCPSocket* socket)
 {
 }
 
-TCPStream::TCPStream(std::unique_ptr<TCPSocket>& socket)
-    : m_socket(std::move(socket))
+TCPStream::TCPStream(std::shared_ptr<TCPSocket>& socket)
+    : m_socket(socket)
 {
 }
 
@@ -20,7 +20,7 @@ ssize_t TCPStream::send(const std::string& message)
     return m_socket->send(message);
 }
 
-ssize_t TCPStream::receive(char* buffer, size_t length, unsigned int timeout)
+ssize_t TCPStream::receive(char* buffer, size_t length, unsigned int timeout_ms)
 {
-    return m_socket->receive(buffer, length, timeout);
+    return m_socket->receive(buffer, length, timeout_ms);
 }

@@ -15,7 +15,7 @@ class server_proto_operation
 protected:
     std::stringstream responseStream;
 public:
-    virtual std::string applyTo(server_raft<TK, TV>* server) = 0;
+    virtual std::string applyTo(server_raft<TK, TV>* server) { }
 };
 
 
@@ -38,6 +38,7 @@ public:
     {
         server->m_mtx.lock();
         server->m_started = false;
+        server->m_receiver.stopRequestReciving();
         server->m_mtx.unlock();
         return "stopped";
     }

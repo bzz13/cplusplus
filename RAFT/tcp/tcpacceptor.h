@@ -19,5 +19,5 @@ public:
     TCPAcceptor(int port, const char* address);
 
     bool                        start();
-    std::unique_ptr<TCPStream>  accept();
+    std::shared_ptr<TCPStream>  accept();
 };

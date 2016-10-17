@@ -37,22 +37,22 @@ ssize_t TCPSocket::send(const std::string& message)
     return write(m_socket, message.c_str(), message.size());
 }
 
-ssize_t TCPSocket::receive(char* buffer, size_t length, unsigned int timeout)
+ssize_t TCPSocket::receive(char* buffer, size_t length, unsigned int timeout_ms)
 {
-    return timeout == 0
+    return timeout_ms == 0
         ? read(m_socket, buffer, length)
-        : (waitForReadEvent(timeout)
+        : (waitForReadEvent(timeout_ms)
             ? read(m_socket, buffer, length)
             : connectionTimedOut);
 }
 
-bool TCPSocket::waitForReadEvent(const unsigned int& timeout)
+bool TCPSocket::waitForReadEvent(const unsigned int& timeout_ms)
 {
     fd_set sdset;
     struct timeval tv;
 
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
+    tv.tv_sec = 0;
+    tv.tv_usec = timeout_ms*1000;
     FD_ZERO(&sdset);
     FD_SET(m_socket, &sdset);
     return select(m_socket + 1, &sdset, nullptr, nullptr, &tv) > 0;
