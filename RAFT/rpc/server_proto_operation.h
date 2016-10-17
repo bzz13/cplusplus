@@ -191,7 +191,7 @@ public:
         {
             case server_raft<TK, TV>::serverStatus::leader:
                 forwardingRequestStream << "syncset " << key << " " << val;
-                if (server->isMajority(server->sendForAll(forwardingRequestStream.str()), val))
+                if (server->isMajority(server->sendForAll(forwardingRequestStream.str(), val), val))
                 {
                     server->m_store.set(key, val);
                     server_proto_operation<TK, TV>::responseStream << server->m_store.get(key);

@@ -48,8 +48,8 @@ class server_raft
     std::unique_ptr<int>        m_vote_for_term;
 
     string handleRequest(const std::string&  request);
-    std::vector<std::string> sendForAll(const std::string& message);
     std::vector<std::string> sendForAll(const std::string& message, const std::string& selfResponse);
+    std::vector<std::string> sendForAll(const std::string& message, TV& selfResponseTV);
 
     bool isMajority(const std::vector<std::string>& results, const std::string& val);
     bool isMajority(const std::vector<std::string>& results, TV& val);
@@ -67,7 +67,6 @@ public:
     void start();
     void startHeartBeatSending();
     void startHeartBeatWaiting();
-
     void startRequstHandling();
 };
 
@@ -92,24 +91,69 @@ server_raft<TK, TV>::~server_raft()
 template<typename TK, typename TV>
 void server_raft<TK, TV>::start()
 {
-    clog << "!!!!!NOW FOLLOWER!!!" << endl;
     if (m_started)
         return;
+
+    clog << "!!!!!NOW FOLLOWER!!!" << endl;
 
     m_started = true;
     startRequstHandling();
     startHeartBeatWaiting();
+    startHeartBeatSending();
 }
 
 template<typename TK, typename TV>
-std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message)
+std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message, const std::string& selfResponse)
 {
     std::vector<std::string> results;
     TCPConnector connector;
     for(auto repl: m_replicas)
     {
         if (repl == m_self)
+        {
+            results.push_back(selfResponse);
             continue;
+        }
+        try
+        {
+            auto stream = connector.connect(repl);
+            if (stream)
+            {
+                std::clog << message << std::endl;
+                stream->send(message);
+                ssize_t len;
+                char line[256];
+                if ((len = stream->receive(line, sizeof(line))) > 0) {
+                    line[len] = 0;
+                    results.push_back(std::string(line));
+                }
+                else throw TCPException("can't read result");
+            }
+            else throw TCPException("can't connect");
+        }
+        catch(TCPException& tcpe)
+        {
+            std::clog << "error from " << repl << ": " << tcpe.what() << std::endl;
+            results.push_back("");
+        }
+    }
+    return results;
+}
+
+template<typename TK, typename TV>
+std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message, TV& selfResponseTV)
+{
+    std::vector<std::string> results;
+    TCPConnector connector;
+    for(auto repl: m_replicas)
+    {
+        if (repl == m_self)
+        {
+            stringstream selfResponse;
+            selfResponse << selfResponseTV;
+            results.push_back(selfResponse.str());
+            continue;
+        }
         try
         {
             auto stream = connector.connect(repl);
@@ -170,7 +214,7 @@ void server_raft<TK, TV>::startHeartBeatSending()
                 {
                     stringstream message;
                     message << "hb " << m_term << " " << m_self;
-                    std::vector<string> resps(sendForAll(message.str()));
+                    std::vector<string> resps(sendForAll(message.str(), m_term));
                     m_mtx.unlock();
                     std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 250));
                 }
@@ -202,7 +246,7 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
                         stringstream voteMessage;
                         voteMessage << "vote " << m_term << " " << m_self;
 
-                        if (isMajority(sendForAll(voteMessage.str()), m_self.toString()))
+                        if (isMajority(sendForAll(voteMessage.str(), m_self.toString()), m_self.toString()))
                         {
                             m_status = serverStatus::leader; clog << "!!!!!NOW LEADER!!!" << endl;
                             startHeartBeatSending();
