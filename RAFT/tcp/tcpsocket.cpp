@@ -51,7 +51,7 @@ bool TCPSocket::waitForReadEvent(const unsigned int& timeout_ms)
     fd_set sdset;
     struct timeval tv;
 
-    tv.tv_sec = 0;
+    tv.tv_sec = timeout_ms/1000;
     tv.tv_usec = timeout_ms*1000;
     FD_ZERO(&sdset);
     FD_SET(m_socket, &sdset);
