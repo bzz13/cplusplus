@@ -246,19 +246,20 @@ public:
         std::stringstream forwardingRequestStream;
         switch(server->m_status)
         {
-            case server_raft<TK, TV>::serverStatus::leader:
-                forwardingRequestStream << "syncset " << key << " " << val;
-                if (server->isMajority(server->sendForAll(forwardingRequestStream.str(), val), val))
-                {
-                    server->m_store.set(key, val);
-                    response << server->m_store.get(key);
-                }
-                else
-                    response << "not applied";
-                break;
-            default:
-                response << "redirect " << server->m_leader;
-                break;
+            // TODO: implement this
+            // case server_raft<TK, TV>::serverStatus::leader:
+            //     forwardingRequestStream << "syncset " << key << " " << val;
+            //     if (server->isMajority(server->sendForAll(forwardingRequestStream.str(), val), val))
+            //     {
+            //         server->m_store.set(key, val);
+            //         response << server->m_store.get(key);
+            //     }
+            //     else
+            //         response << "not applied";
+            //     break;
+            // default:
+            //     response << "redirect " << server->m_leader;
+            //     break;
         }
         std::clog << "-> " << response.str() << std::endl;
         // server->m_sender.sendRequest(vote_replica, response.str());

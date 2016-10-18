@@ -23,10 +23,10 @@ public:
         if (method == "vote")       return spt_spo((spo*)new server_proto_vote<TK, TV>(requestStream));
         if (method == "vote_for")   return spt_spo((spo*)new server_proto_vote_for<TK, TV>(requestStream));
         if (method == "hb")         return spt_spo((spo*)new server_proto_heartbeat<TK, TV>(requestStream));
-        // if (method == "get")        return spt_spo((spo*)new server_proto_get<TK, TV>(requestStream));
-        // if (method == "del")        return spt_spo((spo*)new server_proto_del<TK, TV>(requestStream));
-        // if (method == "set")        return spt_spo((spo*)new server_proto_set<TK, TV>(requestStream));
-        // if (method == "syncset")    return spt_spo((spo*)new server_proto_syncset<TK, TV>(requestStream));
+        if (method == "get")        return spt_spo((spo*)new server_proto_get<TK, TV>(requestStream));
+        if (method == "del")        return spt_spo((spo*)new server_proto_del<TK, TV>(requestStream));
+        if (method == "set")        return spt_spo((spo*)new server_proto_set<TK, TV>(requestStream));
+        if (method == "syncset")    return spt_spo((spo*)new server_proto_syncset<TK, TV>(requestStream));
                                     return spt_spo((spo*)new server_proto_undef<TK, TV>());
     }
 };

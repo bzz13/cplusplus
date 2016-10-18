@@ -55,6 +55,10 @@ class server_raft
     std::unique_ptr<int>                        m_vote_for_term;
     std::unordered_map<int, std::vector<bool>>  m_voting;
 
+    void startHeartBeatSending();
+    void startHeartBeatWaiting();
+    void startRequstHandling();
+    
 public:
     enum serverStatus
     {
@@ -67,9 +71,6 @@ public:
     ~server_raft();
 
     void start();
-    void startHeartBeatSending();
-    void startHeartBeatWaiting();
-    void startRequstHandling();
 };
 
 template<typename TK, typename TV>
@@ -116,7 +117,8 @@ void server_raft<TK, TV>::startHeartBeatSending()
             while(m_started)
             {
                 m_mtx.lock();
-                if (m_status == serverStatus::leader && m_started)
+                if (m_status == serverStatus::leader &&
+                    m_started)
                 {
                     stringstream heartBeatMessage;
                     heartBeatMessage << "hb " << m_self << " " << m_term;
@@ -150,12 +152,8 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
                     stringstream voteInitMessage;
                     voteInitMessage << "vote_init";
                     m_sender.sendRequest(m_self, voteInitMessage.str());
-                    m_mtx.unlock();
                 }
-                else
-                {
-                    m_mtx.unlock();
-                }
+                m_mtx.unlock();
                 std::this_thread::yield();
             }
         });
@@ -171,16 +169,13 @@ void server_raft<TK, TV>::startRequstHandling()
             while (m_started)
             {
                 m_mtx.lock();
-                if (m_receiver.hasRequest() && m_started)
+                if (m_receiver.hasRequest() &&
+                    m_started)
                 {
                     auto operation = m_receiver.getRequest();
                     operation->applyTo(this);
-                    m_mtx.unlock();
                 }
-                else
-                {
-                    m_mtx.unlock();
-                }
+                m_mtx.unlock();
                 std::this_thread::yield();
             }
         });
