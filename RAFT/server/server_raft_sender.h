@@ -51,9 +51,7 @@ public:
     {
         m_mtx.lock();
         for (auto r: rs)
-            if (r == exclude)
-                continue;
-            else
+            if (!(r == exclude))
                 m_queue.push(std::make_pair(r, message));
         m_mtx.unlock();
     }
