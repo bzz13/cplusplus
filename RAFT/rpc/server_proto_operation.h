@@ -9,18 +9,12 @@
 #include "../replicas/replica.h"
 
 template<typename TK, typename TV> class server_raft;
-template<typename TK, typename TV> class server_proto_parser;
 
 template<typename TK, typename TV>
 class server_proto_operation
 {
-    friend class server_proto_parser<TK, TV>;
-protected:
-    std::stringstream   m_responseStream;
-    replica             m_message_sender;
 public:
-    virtual std::string applyTo(server_raft<TK, TV>* server) = 0;
-    virtual replica getSender() const { return m_message_sender; }
+    virtual void applyTo(server_raft<TK, TV>* server) = 0;
 };
 
 
@@ -28,10 +22,9 @@ template<typename TK, typename TV>
 class server_proto_undef: protected server_proto_operation<TK, TV>
 {
 public:
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
         std::cerr << "undef request" << std::endl;
-        return "";
     }
 };
 
@@ -39,13 +32,12 @@ template<typename TK, typename TV>
 class server_proto_stop: protected server_proto_operation<TK, TV>
 {
 public:
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
         server->m_started = false;
         server->m_receiver.stopRequestReciving();
         server->m_sender.stopRequestSending();
-        std::clog << "stopped" << std::endl;
-        return "";
+        std::clog << "-> stopped" << std::endl;
     }
 };
 
@@ -54,7 +46,7 @@ template<typename TK, typename TV>
 class server_proto_vote_init: protected server_proto_operation<TK, TV>
 {
 public:
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
         server->m_term++;
         server->m_status = server_raft<TK, TV>::serverStatus::candidate;
@@ -67,8 +59,6 @@ public:
         std::stringstream voteMessage;
         voteMessage << "vote " << server->m_self << " " << server->m_term;
         server->m_sender.sendRequest(server->m_replicas, voteMessage.str());
-
-        return "";
     }
 };
 
@@ -83,13 +73,13 @@ public:
         requestStream >> vote_replica >> vote_term;
     }
 
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
-        server_proto_operation<TK, TV>::m_responseStream 
-            << "vote_for " << vote_replica << " " << vote_term;
+        std::stringstream response;
+        response << "vote_for " << vote_replica << " " << vote_term;
         if (vote_term < server->m_term)
         {
-             server_proto_operation<TK, TV>::m_responseStream << " false";
+             response << " false";
         }
         else
         {
@@ -101,14 +91,13 @@ public:
             }
         }
         if (*(server->m_vote_for_replica) == vote_replica)
-            server_proto_operation<TK, TV>::m_responseStream << " true";
+            response << " true";
         else
-            server_proto_operation<TK, TV>::m_responseStream << " false";
+            response << " false";
 
-        return server_proto_operation<TK, TV>::m_responseStream.str();
+        std::clog << "-> " << response.str() << std::endl;
+        server->m_sender.sendRequest(vote_replica, response.str());
     }
-
-    virtual replica getSender() const { return vote_replica; }
 };
 
 
@@ -134,7 +123,7 @@ public:
         vote_result = (vote == "true");
     }
 
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
         std::clog << "<<< fr: " << vote_replica << " msg: " << vote_result << std::endl;
         auto votes = server->m_voting.find(vote_term);
@@ -147,10 +136,7 @@ public:
                 server->m_status = server_raft<TK, TV>::serverStatus::leader;
             }
         }
-        return "";
     }
-
-    virtual replica getSender() const { return vote_replica; }
 };
 
 template<typename TK, typename TV>
@@ -164,12 +150,13 @@ public:
         requestStream >> leader_replica >> leader_term;
     }
 
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
-        server_proto_operation<TK, TV>::m_responseStream << leader_replica << " " << leader_term;
+        std::stringstream response;
+        response << leader_replica << " " << leader_term;
         if (leader_term < server->m_term)
         {
-            server_proto_operation<TK, TV>::m_responseStream << " false";
+            response << " false";
         }
         else
         {
@@ -181,12 +168,10 @@ public:
             server->m_term = leader_term;
             server->m_leader = leader_replica;
             server->m_timer.reset();
-            server_proto_operation<TK, TV>::m_responseStream << " true";
+            response << " true";
         }
-        return "";
+        std::clog << "-> " << response.str() << std::endl;
     }
-
-    virtual replica getSender() const { return leader_replica; }
 };
 
 template<typename TK, typename TV>
@@ -199,20 +184,20 @@ public:
         requestStream >> key;
     }
 
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
-        server->m_mtx.lock();
+        std::stringstream response;
         switch(server->m_status)
         {
             case server_raft<TK, TV>::serverStatus::leader:
-                server_proto_operation<TK, TV>::m_responseStream << server->m_store.get(key);
+                response << server->m_store.get(key);
                 break;
             default:
-                server_proto_operation<TK, TV>::m_responseStream << "redirect " << server->m_leader;
+                response << "redirect " << server->m_leader;
                 break;
         }
-        server->m_mtx.unlock();
-        return server_proto_operation<TK, TV>::m_responseStream.str();
+        std::clog << "-> " << response.str() << std::endl;
+        // server->m_sender.sendRequest(vote_replica, response.str());
     }
 };
 
@@ -226,21 +211,21 @@ public:
         requestStream >> key;
     }
 
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
-        server->m_mtx.lock();
+        std::stringstream response;
         switch(server->m_status)
         {
             case server_raft<TK, TV>::serverStatus::leader:
                 server->m_store.del(key);
-                server_proto_operation<TK, TV>::m_responseStream << "deleted";
+                response << "deleted";
                 break;
             default:
-                server_proto_operation<TK, TV>::m_responseStream << "redirect " << server->m_leader;
+                response << "redirect " << server->m_leader;
                 break;
         }
-        server->m_mtx.unlock();
-        return server_proto_operation<TK, TV>::m_responseStream.str();
+        std::clog << "-> " << response.str() << std::endl;
+        // server->m_sender.sendRequest(vote_replica, response.str());
     }
 };
 
@@ -255,10 +240,10 @@ public:
         requestStream >> key >> val;
     }
 
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
+        std::stringstream response;
         std::stringstream forwardingRequestStream;
-        server->m_mtx.lock();
         switch(server->m_status)
         {
             case server_raft<TK, TV>::serverStatus::leader:
@@ -266,17 +251,17 @@ public:
                 if (server->isMajority(server->sendForAll(forwardingRequestStream.str(), val), val))
                 {
                     server->m_store.set(key, val);
-                    server_proto_operation<TK, TV>::m_responseStream << server->m_store.get(key);
+                    response << server->m_store.get(key);
                 }
                 else
-                    server_proto_operation<TK, TV>::m_responseStream << "not applied";
+                    response << "not applied";
                 break;
             default:
-                server_proto_operation<TK, TV>::m_responseStream << "redirect " << server->m_leader;
+                response << "redirect " << server->m_leader;
                 break;
         }
-        server->m_mtx.unlock();
-        return server_proto_operation<TK, TV>::m_responseStream.str();
+        std::clog << "-> " << response.str() << std::endl;
+        // server->m_sender.sendRequest(vote_replica, response.str());
     }
 };
 
@@ -291,20 +276,20 @@ public:
         requestStream >> key >> val;
     }
 
-    virtual std::string applyTo(server_raft<TK, TV>* server)
+    virtual void applyTo(server_raft<TK, TV>* server)
     {
-        server->m_mtx.lock();
+        std::stringstream response;
         switch(server->m_status)
         {
             case server_raft<TK, TV>::serverStatus::follower:
                 server->m_store.set(key, val);
-                server_proto_operation<TK, TV>::m_responseStream << server->m_store.get(key);
+                response << server->m_store.get(key);
                 break;
             default:
-                server_proto_operation<TK, TV>::m_responseStream << "not applied";
+                response << "not applied";
                 break;
         }
-        server->m_mtx.unlock();
-        return server_proto_operation<TK, TV>::m_responseStream.str();
+        std::clog << "-> " << response.str() << std::endl;
+        // server->m_sender.sendRequest(vote_replica, response.str());
     }
 };

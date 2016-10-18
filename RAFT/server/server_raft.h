@@ -127,8 +127,8 @@ void server_raft<TK, TV>::startHeartBeatSending()
                 else
                 {
                     m_mtx.unlock();
-                    std::this_thread::yield();
                 }
+                std::this_thread::yield();
             }
         });
     }
@@ -155,8 +155,8 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
                 else
                 {
                     m_mtx.unlock();
-                    std::this_thread::yield();
                 }
+                std::this_thread::yield();
             }
         });
     }
@@ -174,16 +174,14 @@ void server_raft<TK, TV>::startRequstHandling()
                 if (m_receiver.hasRequest() && m_started)
                 {
                     auto operation = m_receiver.getRequest();
-                    auto response = operation->applyTo(this);
-                    if (response != "")
-                        m_sender.sendRequest(operation->getSender(), response);
+                    operation->applyTo(this);
                     m_mtx.unlock();
                 }
                 else
                 {
                     m_mtx.unlock();
-                    std::this_thread::yield();
                 }
+                std::this_thread::yield();
             }
         });
     }

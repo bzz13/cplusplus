@@ -15,8 +15,6 @@ class server_raft_receiver
 {
     typedef server_proto_operation<TK, TV> spo;
     typedef std::shared_ptr<spo> spt_spo;
-    typedef std::shared_ptr<TCPStream> spt_stm;
-    typedef std::pair<spt_stm, spt_spo> p;
 
     bool                        m_started;
     replica                     m_self;
