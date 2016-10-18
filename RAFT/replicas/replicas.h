@@ -30,6 +30,7 @@ public:
         read();
     }
 
+    int size() const { return m_replicas.size(); }
     std::vector<replica>::iterator begin() { return m_replicas.begin(); }
     std::vector<replica>::iterator end() { return m_replicas.end(); }
 };

@@ -5,6 +5,8 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
+#include <unordered_map>
+#include <vector>
 #include "../replicas/replicas.h"
 #include "../store.h"
 #include "../timer.h"
@@ -14,6 +16,7 @@
 #include "../rpc/server_proto_operation.h"
 #include "../rpc/server_proto_parser.h"
 #include "server_raft_receiver.h"
+#include "server_raft_sender.h"
 
 using namespace std;
 
@@ -22,7 +25,9 @@ class server_raft
 {
     friend class server_proto_undef<TK, TV>;
     friend class server_proto_stop<TK, TV>;
+    friend class server_proto_vote_init<TK, TV>;
     friend class server_proto_vote<TK, TV>;
+    friend class server_proto_vote_for<TK, TV>;
     friend class server_proto_heartbeat<TK, TV>;
     friend class server_proto_get<TK, TV>;
     friend class server_proto_del<TK, TV>;
@@ -37,6 +42,7 @@ class server_raft
     replicas                        m_replicas;
     store<TK, TV>                   m_store;
     server_raft_receiver<TK, TV>    m_receiver;
+    server_raft_sender              m_sender;
 
     std::thread     heartBeatSender;
     std::thread     heartBeatWaiter;
@@ -45,14 +51,10 @@ class server_raft
     std::mutex      m_mtx;
     timer           m_timer;
 
-    std::unique_ptr<replica>    m_vote_for_replica;
-    std::unique_ptr<int>        m_vote_for_term;
+    std::unique_ptr<replica>                    m_vote_for_replica;
+    std::unique_ptr<int>                        m_vote_for_term;
+    std::unordered_map<int, std::vector<bool>>  m_voting;
 
-    std::vector<std::string> sendForAll(const std::string& message, const std::string& selfResponse);
-    std::vector<std::string> sendForAll(const std::string& message, TV& selfResponseTV);
-
-    bool isMajority(const std::vector<std::string>& results, const std::string& val);
-    bool isMajority(const std::vector<std::string>& results, TV& val);
 public:
     enum serverStatus
     {
@@ -74,7 +76,7 @@ template<typename TK, typename TV>
 server_raft<TK, TV>::server_raft(const replica& self, string replicaspath, string logpath, bool restore)
     : m_term(1), m_status(serverStatus::follower), m_started(false),
       m_self(self), m_leader(self), m_replicas(replicaspath),
-      m_store(logpath, restore), m_receiver(self)
+      m_store(logpath, restore), m_receiver(self), m_sender(self)
 {
     if (restore)
         m_store.showStore();
@@ -98,110 +100,11 @@ void server_raft<TK, TV>::start()
 
     m_started = true;
     m_receiver.startRequestReciving();
-
+    m_sender.startRequestSending();
 
     startRequstHandling();
     startHeartBeatWaiting();
     startHeartBeatSending();
-}
-
-template<typename TK, typename TV>
-std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message, const std::string& selfResponse)
-{
-    std::vector<std::string> results;
-    TCPConnector connector;
-    for(auto repl: m_replicas)
-    {
-        if (repl == m_self)
-        {
-            results.push_back(selfResponse);
-            continue;
-        }
-        try
-        {
-            auto stream = connector.connect(repl);
-            if (stream)
-            {
-                std::clog << message << std::endl;
-                stream->send(message);
-                ssize_t len;
-                char line[256];
-                if ((len = stream->receive(line, sizeof(line))) > 0) {
-                    line[len] = 0;
-                    results.push_back(std::string(line));
-                }
-                else throw TCPException("can't read result");
-            }
-            else throw TCPException("can't connect");
-        }
-        catch(TCPException& tcpe)
-        {
-            std::clog << "error from " << repl << ": " << tcpe.what() << std::endl;
-            results.push_back("");
-        }
-    }
-    return results;
-}
-
-template<typename TK, typename TV>
-std::vector<string> server_raft<TK, TV>::sendForAll(const std::string& message, TV& selfResponseTV)
-{
-    std::vector<std::string> results;
-    TCPConnector connector;
-    for(auto repl: m_replicas)
-    {
-        if (repl == m_self)
-        {
-            stringstream selfResponse;
-            selfResponse << selfResponseTV;
-            results.push_back(selfResponse.str());
-            continue;
-        }
-        try
-        {
-            auto stream = connector.connect(repl);
-            if (stream)
-            {
-                std::clog << message << std::endl;
-                stream->send(message);
-                ssize_t len;
-                char line[256];
-                if ((len = stream->receive(line, sizeof(line))) > 0) {
-                    line[len] = 0;
-                    results.push_back(std::string(line));
-                }
-                else throw TCPException("can't read result");
-            }
-            else throw TCPException("can't connect");
-        }
-        catch(TCPException& tcpe)
-        {
-            std::clog << "error from " << repl << ": " << tcpe.what() << std::endl;
-            results.push_back("");
-        }
-    }
-    return results;
-}
-
-template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, TV& val)
-{
-    std::stringstream s;
-    s << val;
-    std::string ss(s.str());
-    int ac = 0;
-    for(auto res: results)
-        if (res == ss) ++ac;
-    return ac >= results.size() - ac;
-}
-
-template<typename TK, typename TV>
-bool server_raft<TK, TV>::isMajority(const std::vector<std::string>& results, const std::string& val)
-{
-    int ac = 0;
-    for(auto res: results)
-        if (res == val) ++ac;
-    return ac >= results.size() - ac;
 }
 
 template<typename TK, typename TV>
@@ -213,11 +116,11 @@ void server_raft<TK, TV>::startHeartBeatSending()
             while(m_started)
             {
                 m_mtx.lock();
-                if (m_status == serverStatus::leader)
+                if (m_status == serverStatus::leader && m_started)
                 {
-                    stringstream message;
-                    message << "hb " << m_term << " " << m_self;
-                    std::vector<string> resps(sendForAll(message.str(), m_term));
+                    stringstream heartBeatMessage;
+                    heartBeatMessage << "hb " << m_self << " " << m_term;
+                    m_sender.sendRequest(m_replicas, m_self, heartBeatMessage.str());
                     m_mtx.unlock();
                     std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 250));
                 }
@@ -241,25 +144,12 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
             while(m_started)
             {
                 m_mtx.lock();
-                if(m_status == serverStatus::follower && m_timer.isExpired())
+                if((m_status == serverStatus::follower || m_status == serverStatus::candidate) && 
+                    m_started && m_timer.isExpired())
                 {
-                    m_term++;
-                    m_status = serverStatus::candidate; clog << "!!!!!NOW CANDIDATE!!!" << endl;
-                    {
-                        stringstream voteMessage;
-                        voteMessage << "vote " << m_term << " " << m_self;
-
-                        if (isMajority(sendForAll(voteMessage.str(), m_self.toString()), m_self.toString()))
-                        {
-                            m_status = serverStatus::leader; clog << "!!!!!NOW LEADER!!!" << endl;
-                            startHeartBeatSending();
-                        }
-                        else
-                        {
-                            m_status = serverStatus::follower; clog << "!!!!!NOW FOLLOWER!!!" << endl;
-                            startHeartBeatWaiting();
-                        }
-                    }
+                    stringstream voteInitMessage;
+                    voteInitMessage << "vote_init";
+                    m_sender.sendRequest(m_self, voteInitMessage.str());
                     m_mtx.unlock();
                 }
                 else
@@ -275,19 +165,26 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
 template<typename TK, typename TV>
 void server_raft<TK, TV>::startRequstHandling()
 {
-    handler = std::thread([this](){
-        while (m_started)
-        {
-            if (m_receiver.hasRequest()) {
-                auto r = m_receiver.getRequest();
-                auto stream = r.first;
-                auto operation = r.second;
-                auto response = operation->applyTo(this);
-                clog << ">>> " << response << endl;
-                stream->send(response);
+    if (!handler.joinable())
+    {
+        handler = std::thread([this](){
+            while (m_started)
+            {
+                m_mtx.lock();
+                if (m_receiver.hasRequest() && m_started)
+                {
+                    auto operation = m_receiver.getRequest();
+                    auto response = operation->applyTo(this);
+                    if (response != "")
+                        m_sender.sendRequest(operation->getSender(), response);
+                    m_mtx.unlock();
+                }
+                else
+                {
+                    m_mtx.unlock();
+                    std::this_thread::yield();
+                }
             }
-            else
-                std::this_thread::yield();
-        }
-    });
+        });
+    }
 }

@@ -24,7 +24,7 @@ class server_raft_receiver
     std::thread                 m_handler;
     TCPAcceptor                 m_acceptor;
     server_proto_parser<TK, TV> m_parser;
-    std::queue<p>               m_queue;
+    std::queue<spt_spo>         m_queue;
 
 public:
     server_raft_receiver(const replica& self)
@@ -61,7 +61,7 @@ public:
                             if (m_started)
                             {
                                 std::clog << "<<< " << request << std::endl;
-                                m_queue.push(std::make_pair(stream, server_proto_op));
+                                m_queue.push(server_proto_op);
                             }
                             m_mtx.unlock();
                         }
@@ -89,9 +89,9 @@ public:
         return result;
     }
 
-    p getRequest()
+    spt_spo getRequest()
     {
-        p result;
+        spt_spo result;
         m_mtx.lock();
         if (!m_queue.empty())
         {
