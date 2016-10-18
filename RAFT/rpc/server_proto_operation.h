@@ -88,11 +88,11 @@ public:
                 server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(vote_replica)));
                 server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(vote_term)));
             }
+            if (*(server->m_vote_for_replica) == vote_replica)
+                response << " true";
+            else
+                response << " false";
         }
-        if (*(server->m_vote_for_replica) == vote_replica)
-            response << " true";
-        else
-            response << " false";
 
         std::clog << "-> " << response.str() << std::endl;
         server->m_sender.sendRequest(vote_replica, response.str());
