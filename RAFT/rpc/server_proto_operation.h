@@ -54,7 +54,6 @@ public:
         server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(server->m_term)));
         server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(server->m_self)));
         server->m_voting.insert({server->m_term, std::vector<bool>()});
-        server->m_timer.start();
 
         std::stringstream voteMessage;
         voteMessage << "vote " << server->m_self << " " << server->m_term;
@@ -129,11 +128,18 @@ public:
         auto votes = server->m_voting.find(vote_term);
         if (votes != server->m_voting.end())
         {
-            votes->second.push_back(vote_result);
-            if (hasMajority(votes->second, server->m_replicas.size()))
+            if (server->m_term == vote_term)
             {
-                std::clog << "!!!!!NOW LEADER!!!" << std::endl;
-                server->m_status = server_raft<TK, TV>::serverStatus::leader;
+                votes->second.push_back(vote_result);
+                if (hasMajority(votes->second, server->m_replicas.size()))
+                {
+                    std::clog << "!!!!!NOW LEADER!!!" << std::endl;
+                    server->m_status = server_raft<TK, TV>::serverStatus::leader;
+                }
+            }
+            else
+            {
+                server->m_voting.erase(vote_term);
             }
         }
     }

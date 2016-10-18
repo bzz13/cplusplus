@@ -58,7 +58,7 @@ class server_raft
     void startHeartBeatSending();
     void startHeartBeatWaiting();
     void startRequstHandling();
-    
+
 public:
     enum serverStatus
     {
@@ -146,9 +146,10 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
             while(m_started)
             {
                 m_mtx.lock();
-                if((m_status == serverStatus::follower || m_status == serverStatus::candidate) && 
+                if(m_status == serverStatus::follower && 
                     m_started && m_timer.isExpired())
                 {
+                    m_timer.clear();
                     stringstream voteInitMessage;
                     voteInitMessage << "vote_init";
                     m_sender.sendRequest(m_self, voteInitMessage.str());
