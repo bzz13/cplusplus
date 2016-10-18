@@ -124,7 +124,7 @@ void server_raft<TK, TV>::startHeartBeatSending()
                     heartBeatMessage << "hb " << m_self << " " << m_term;
                     m_sender.sendRequest(m_replicas, m_self, heartBeatMessage.str());
                     m_mtx.unlock();
-                    std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 250));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(m_timer.getSleepTimeoutMs()));
                 }
                 else
                 {

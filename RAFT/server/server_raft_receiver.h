@@ -49,7 +49,7 @@ public:
                     if (stream) {
                         ssize_t total = 0, lenght = 0;
                         char request[4096];
-                        while( total < 4096 && (lenght = stream->receive(request + total, sizeof(request) - total, 50)) > 0)
+                        while( total < 4096 && (lenght = stream->receive(request + total, sizeof(request) - total)) > 0)
                             total += lenght;
                         if (total > 0)
                         {

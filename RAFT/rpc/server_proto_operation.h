@@ -87,6 +87,13 @@ public:
             {
                 server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(vote_replica)));
                 server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(vote_term)));
+                if (*(server->m_vote_for_term) < vote_term && 
+                    server->m_status == server_raft<TK, TV>::serverStatus::candidate)
+                {
+                    server->m_status = server_raft<TK, TV>::serverStatus::follower;
+                    std::clog << "!!!!!NOW FOLLOWER!!!" << std::endl;
+                    server->m_timer.reset();
+                }
             }
             if (*(server->m_vote_for_replica) == vote_replica)
                 response << " true";
