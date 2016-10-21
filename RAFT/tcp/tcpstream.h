@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tcpsocket.h"
+#include "tcpexception.h"
 #include <memory>
 #include <string>
 
@@ -12,9 +13,16 @@ public:
     friend class TCPAcceptor;
     friend class TCPConnector;
 
-    ssize_t send(const char* buffer, size_t length);
-    ssize_t send(const std::string& message);
-    ssize_t receive(char* buffer, size_t length, unsigned int timeout_ms = 0);
+    std::string         m_data;
+    const std::string   m_delimetr = "\n";
+
+    TCPStream& operator<<(const std::string& message) throw(TCPException);
+    TCPStream& operator<<(const char* message) throw(TCPException);
+    TCPStream& operator>>(std::string& message) throw(TCPException);
+
+    friend std::shared_ptr<TCPStream>& operator<<(std::shared_ptr<TCPStream>& stream, const std::string& message) throw(TCPException);
+    friend std::shared_ptr<TCPStream>& operator<<(std::shared_ptr<TCPStream>& stream, const char* message) throw(TCPException);
+    friend std::shared_ptr<TCPStream>& operator>>(std::shared_ptr<TCPStream>& stream, std::string& message) throw(TCPException);
 
 private:
     TCPStream(TCPSocket* socket);

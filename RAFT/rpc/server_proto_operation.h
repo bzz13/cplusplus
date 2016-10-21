@@ -21,23 +21,34 @@ public:
 template<typename TK, typename TV>
 class server_proto_undef: protected server_proto_operation<TK, TV>
 {
+    std::shared_ptr<TCPStream> m_stream;
 public:
+    server_proto_undef(std::shared_ptr<TCPStream>& stream): m_stream(stream)
+    {
+    }
+
     virtual void applyTo(server_raft<TK, TV>* server)
     {
         std::cerr << "undef request" << std::endl;
+        m_stream << "undef request";
     }
 };
 
 template<typename TK, typename TV>
 class server_proto_stop: protected server_proto_operation<TK, TV>
 {
+    std::shared_ptr<TCPStream> m_stream;
 public:
+    server_proto_stop(std::shared_ptr<TCPStream>& stream): m_stream(stream)
+    {
+    }
+
     virtual void applyTo(server_raft<TK, TV>* server)
     {
         server->m_started = false;
         server->m_receiver.stopRequestReciving();
         server->m_sender.stopRequestSending();
-        std::clog << "-> stopped" << std::endl;
+        m_stream << "stopped";
     }
 };
 
@@ -191,8 +202,9 @@ template<typename TK, typename TV>
 class server_proto_get: protected server_proto_operation<TK, TV>
 {
     TK key;
+    std::shared_ptr<TCPStream> m_stream;
 public:
-    server_proto_get(std::istream& requestStream)
+    server_proto_get(std::istream& requestStream, std::shared_ptr<TCPStream>& stream): m_stream(stream)
     {
         requestStream >> key;
     }
@@ -210,7 +222,7 @@ public:
                 break;
         }
         std::clog << "-> " << response.str() << std::endl;
-        // server->m_sender.sendRequest(vote_replica, response.str());
+        m_stream << response.str();
     }
 };
 
@@ -218,8 +230,9 @@ template<typename TK, typename TV>
 class server_proto_del: protected server_proto_operation<TK, TV>
 {
     TK key;
+    std::shared_ptr<TCPStream> m_stream;
 public:
-    server_proto_del(std::istream& requestStream)
+    server_proto_del(std::istream& requestStream, std::shared_ptr<TCPStream>& stream): m_stream(stream)
     {
         requestStream >> key;
     }
@@ -238,7 +251,7 @@ public:
                 break;
         }
         std::clog << "-> " << response.str() << std::endl;
-        // server->m_sender.sendRequest(vote_replica, response.str());
+        m_stream << response.str();
     }
 };
 
@@ -247,8 +260,9 @@ class server_proto_set: protected server_proto_operation<TK, TV>
 {
     TK key;
     TV val;
+    std::shared_ptr<TCPStream> m_stream;
 public:
-    server_proto_set(std::istream& requestStream)
+    server_proto_set(std::istream& requestStream, std::shared_ptr<TCPStream>& stream): m_stream(stream)
     {
         requestStream >> key >> val;
     }
@@ -257,15 +271,15 @@ public:
     {
         std::stringstream response;
         std::stringstream forwardingRequestStream;
-        switch(server->m_status)
-        {
+        // switch(server->m_status)
+        // {
             // TODO: implement this
             // case server_raft<TK, TV>::serverStatus::leader:
             //     forwardingRequestStream << "syncset " << key << " " << val;
             //     if (server->isMajority(server->sendForAll(forwardingRequestStream.str(), val), val))
             //     {
-            //         server->m_store.set(key, val);
-            //         response << server->m_store.get(key);
+                    server->m_store.set(key, val);
+                    response << server->m_store.get(key);
             //     }
             //     else
             //         response << "not applied";
@@ -273,9 +287,9 @@ public:
             // default:
             //     response << "redirect " << server->m_leader;
             //     break;
-        }
+        // }
         std::clog << "-> " << response.str() << std::endl;
-        // server->m_sender.sendRequest(vote_replica, response.str());
+        m_stream << response.str();
     }
 };
 

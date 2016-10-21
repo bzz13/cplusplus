@@ -4,7 +4,8 @@
 #include <vector>
 #include <mutex>
 #include <memory>
-#include <utility> 
+#include <utility>
+#include <unordered_map>
 #include <thread>
 #include "../replicas/replica.h"
 #include "../tcp/tcpconnector.h"
@@ -12,13 +13,16 @@
 class server_raft_sender
 {
     typedef std::pair<const replica, const std::string> p;
+    typedef std::shared_ptr<TCPStream> spt_strm;
+    typedef std::unique_lock<std::mutex> lock;
 
-    bool                            m_started;
-    replica                         m_self;
-    std::mutex                      m_mtx;
-    std::thread                     m_handler;
-    TCPConnector                    m_connnector;
-    std::queue<p>                   m_queue;
+    bool                                        m_started;
+    replica                                     m_self;
+    std::mutex                                  m_mtx;
+    std::thread                                 m_handler;
+    TCPConnector                                m_connnector;
+    std::queue<p>                               m_queue;
+    std::unordered_map<std::string, spt_strm>   m_map;
 
 public:
     server_raft_sender(const replica& self)
@@ -28,32 +32,31 @@ public:
 
     ~server_raft_sender()
     {
-        if(m_handler.joinable())
-            m_handler.join();
+        if(m_handler.joinable()) m_handler.join();
     }
 
     void sendRequest(const replica& r, const std::string& message)
     {
-        m_mtx.lock();
+        lock lk(m_mtx);
         m_queue.push(std::make_pair(r, message));
-        m_mtx.unlock();
+        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
     }
 
     void sendRequest(replicas& rs, const std::string& message)
     {
-        m_mtx.lock();
+        lock lk(m_mtx);
         for (auto r: rs)
             m_queue.push(std::make_pair(r, message));
-        m_mtx.unlock();
+        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
     }
 
     void sendRequest(replicas& rs, const replica& exclude, const std::string& message)
     {
-        m_mtx.lock();
+        lock lk(m_mtx);
         for (auto r: rs)
             if (!(r == exclude))
                 m_queue.push(std::make_pair(r, message));
-        m_mtx.unlock();
+        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
     }
 
     void startRequestSending()
@@ -64,30 +67,32 @@ public:
             m_handler = std::thread([this](){
                 while (m_started)
                 {
-                    m_mtx.lock();
+                    lock lk(m_mtx);
                     if (!m_queue.empty())
                     {
                         auto p = m_queue.front();
                         m_queue.pop();
-                        m_mtx.unlock();
+                        lk.unlock();
+                        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
                         try
                         {
-                            auto stream = m_connnector.connect(p.first);
+                            auto stream = m_map[p.first.toString()];
+                            if (!stream)
+                            {
+                                stream = m_connnector.connect(p.first);
+                                m_map[p.first.toString()] = stream;
+                            }
                             if (stream && m_started)
                             {
+                                stream << p.second;
                                 std::clog << ">>> to: " << p.first << " msg: " << p.second << std::endl;
-                                stream->send(p.second);
                             }
                         }
                         catch(TCPException& tcpe)
                         {
+                            m_map.erase(p.first.toString());
                             std::cerr << tcpe.what() << std::endl;
                         }
-                    }
-                    else
-                    {
-                        m_mtx.unlock();
-                        std::this_thread::yield();
                     }
                 }
             });
@@ -96,10 +101,9 @@ public:
 
     void stopRequestSending()
     {
-        m_mtx.lock();
+        lock lk(m_mtx);
         m_started = false;
         while(!m_queue.empty())
             m_queue.pop();
-        m_mtx.unlock();
     }
 };

@@ -10,6 +10,7 @@
 #include "../replicas/replicas.h"
 #include "../store.h"
 #include "../timer.h"
+#include "../tcp/tcpstream.h"
 #include "../tcp/tcpacceptor.h"
 #include "../tcp/tcpconnector.h"
 #include "../tcp/tcpexception.h"
@@ -46,7 +47,6 @@ class server_raft
 
     std::thread     heartBeatSender;
     std::thread     heartBeatWaiter;
-    std::thread     handler;
 
     std::mutex      m_mtx;
     timer           m_timer;
@@ -59,6 +59,7 @@ class server_raft
     void startHeartBeatWaiting();
     void startRequstHandling();
 
+    void handler(std::shared_ptr<TCPStream>& stream);
 public:
     enum serverStatus
     {
@@ -86,7 +87,6 @@ server_raft<TK, TV>::server_raft(const replica& self, string replicaspath, strin
 template<typename TK, typename TV>
 server_raft<TK, TV>::~server_raft()
 {
-    if (handler.joinable()) handler.join();
     if (heartBeatSender.joinable()) heartBeatSender.join();
     if (heartBeatWaiter.joinable()) heartBeatWaiter.join();
 }
@@ -100,13 +100,34 @@ void server_raft<TK, TV>::start()
     clog << "!!!!!NOW FOLLOWER!!!" << endl;
 
     m_started = true;
-    m_receiver.startRequestReciving();
+    m_timer.start();
+
+    m_receiver.startRequestReciving([this](std::shared_ptr<TCPStream>& stream){ handler(stream); });
     m_sender.startRequestSending();
 
-    startRequstHandling();
     startHeartBeatWaiting();
     startHeartBeatSending();
+    // m_status = serverStatus::leader;
 }
+
+template<typename TK, typename TV>
+void server_raft<TK, TV>::handler(std::shared_ptr<TCPStream>& stream)
+{
+    if (stream)
+    {
+        std::string request;
+        stream >> request;
+        std::clog << ">>> " << request << std::endl;
+        server_proto_parser<TK, TV> parser;
+        auto operation = parser.parse(request, stream);
+        {
+            std::unique_lock<std::mutex> lk(m_mtx);
+            if (m_started)
+                operation->applyTo(this);
+        }
+    }
+}
+
 
 template<typename TK, typename TV>
 void server_raft<TK, TV>::startHeartBeatSending()
@@ -116,19 +137,15 @@ void server_raft<TK, TV>::startHeartBeatSending()
         heartBeatSender = std::thread([this](){
             while(m_started)
             {
-                m_mtx.lock();
+                std::unique_lock<std::mutex> lk(m_mtx);
                 if (m_status == serverStatus::leader &&
                     m_started)
                 {
+                    lk.unlock();
                     stringstream heartBeatMessage;
                     heartBeatMessage << "hb " << m_self << " " << m_term;
                     m_sender.sendRequest(m_replicas, m_self, heartBeatMessage.str());
-                    m_mtx.unlock();
                     std::this_thread::sleep_for(std::chrono::milliseconds(m_timer.getSleepTimeoutMs()));
-                }
-                else
-                {
-                    m_mtx.unlock();
                 }
                 std::this_thread::yield();
             }
@@ -139,44 +156,21 @@ void server_raft<TK, TV>::startHeartBeatSending()
 template<typename TK, typename TV>
 void server_raft<TK, TV>::startHeartBeatWaiting()
 {
-    m_timer.start();
     if (!heartBeatWaiter.joinable())
     {
         heartBeatWaiter = std::thread([this](){
             while(m_started)
             {
-                m_mtx.lock();
+                std::unique_lock<std::mutex> lk(m_mtx);
                 if(m_status == serverStatus::follower && 
                     m_started && m_timer.isExpired())
                 {
+                    lk.unlock();
                     m_timer.clear();
                     stringstream voteInitMessage;
                     voteInitMessage << "vote_init";
                     m_sender.sendRequest(m_self, voteInitMessage.str());
                 }
-                m_mtx.unlock();
-                std::this_thread::yield();
-            }
-        });
-    }
-}
-
-template<typename TK, typename TV>
-void server_raft<TK, TV>::startRequstHandling()
-{
-    if (!handler.joinable())
-    {
-        handler = std::thread([this](){
-            while (m_started)
-            {
-                m_mtx.lock();
-                if (m_receiver.hasRequest() &&
-                    m_started)
-                {
-                    auto operation = m_receiver.getRequest();
-                    operation->applyTo(this);
-                }
-                m_mtx.unlock();
                 std::this_thread::yield();
             }
         });

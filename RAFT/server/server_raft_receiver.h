@@ -1,67 +1,77 @@
 #pragma once
 
+#include <functional>
 #include <queue>
 #include <mutex>
 #include <memory>
 #include <utility> 
 #include <thread>
 #include "../replicas/replica.h"
-#include "../rpc/server_proto_parser.h"
 #include "../tcp/tcpacceptor.h"
 
 
 template<typename TK, typename TV>
 class server_raft_receiver
 {
-    typedef server_proto_operation<TK, TV> spo;
-    typedef std::shared_ptr<spo> spt_spo;
+    typedef std::shared_ptr<TCPStream> spt_strm;
+    typedef std::unique_lock<std::mutex> lock;
 
-    bool                        m_started;
-    replica                     m_self;
-    std::mutex                  m_mtx;
-    std::thread                 m_handler;
-    TCPAcceptor                 m_acceptor;
-    server_proto_parser<TK, TV> m_parser;
-    std::queue<spt_spo>         m_queue;
+    bool                                m_started;
+    std::mutex                          m_mtx;
+    std::thread                         m_handler;
+    std::thread                         m_proccer;
+    TCPAcceptor                         m_acceptor;
+    std::queue<spt_strm>                m_queue;
 
 public:
     server_raft_receiver(const replica& self)
-        : m_started(false), m_self(self), m_acceptor(self)
+        : m_started(false), m_acceptor(self)
     {
     }
 
     ~server_raft_receiver()
     {
-        if(m_handler.joinable())
-            m_handler.join();
+        if(m_handler.joinable()) m_handler.join();
+        if(m_proccer.joinable()) m_proccer.join();
     }
 
-    void startRequestReciving()
+    void startRequestReciving(std::function<void (spt_strm&)> worker)
     {
+        m_started = m_acceptor.start();
         if (!m_handler.joinable())
         {
             m_handler = std::thread([this](){
-                m_started = m_acceptor.start();
-
                 while (m_started)
                 {
                     auto stream = m_acceptor.accept();
-                    if (stream) {
-                        ssize_t total = 0, lenght = 0;
-                        char request[4096];
-                        while( total < 4096 && (lenght = stream->receive(request + total, sizeof(request) - total)) > 0)
-                            total += lenght;
-                        if (total > 0)
+                    std::clog << "acepted" << std::endl;
+                    lock lk(m_mtx);
+                    if (m_started)
+                        m_queue.push(stream);
+                    std::clog << "receiving m_queue.size: " << m_queue.size() << std::endl;
+                }
+            });
+        }
+
+        if (!m_proccer.joinable())
+        {
+            m_proccer = std::thread([this, worker](){
+                while (m_started)
+                {
+                    lock lk(m_mtx);
+                    if (!m_queue.empty())
+                    {
+                        auto stream = m_queue.front();
+                        m_queue.pop();
+                        try
                         {
-                            request[total] = 0;
-                            auto server_proto_op = m_parser.parse(request);
-                            m_mtx.lock();
-                            if (m_started)
-                            {
-                                std::clog << "<<< " << request << std::endl;
-                                m_queue.push(server_proto_op);
-                            }
-                            m_mtx.unlock();
+                            worker(stream);
+                            m_queue.push(stream);
+                            std::clog << "receiving m_queue.size: " << m_queue.size() << std::endl;
+                        }
+                        catch(TCPException& tcpe)
+                        {
+                            std::cerr << tcpe.what() << std::endl;
                         }
                     }
                 }
@@ -71,32 +81,9 @@ public:
 
     void stopRequestReciving()
     {
-        m_mtx.lock();
+        lock lk(m_mtx);
         m_started = false;
         while(!m_queue.empty())
             m_queue.pop();
-        m_mtx.unlock();
-    }
-
-    bool hasRequest()
-    {
-        bool result;
-        m_mtx.lock();
-        result = !m_queue.empty();
-        m_mtx.unlock();
-        return result;
-    }
-
-    spt_spo getRequest()
-    {
-        spt_spo result;
-        m_mtx.lock();
-        if (!m_queue.empty())
-        {
-            result = m_queue.front();
-            m_queue.pop();
-        }
-        m_mtx.unlock();
-        return result;
     }
 };

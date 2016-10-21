@@ -13,26 +13,24 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    int len;
-    char line[256];
+    TCPConnector connector;
+    auto stream = connector.connect(argv[1], atoi(argv[2]));
 
     cout << "input request" << endl;
     while (true)
     {
-        string message;
-        getline(cin, message);
+        string request;
+        string response;
+        getline(cin, request);
 
-        if (message == "exit")
+        if (request == "exit")
             break;
 
-        TCPConnector connector;
-        auto stream = connector.connect(argv[1], atoi(argv[2]));
         if (stream) {
-            stream->send(message);
-            len = stream->receive(line, sizeof(line));
-            line[len] = 0;
-            clog << "received: " << line << endl;
-            if (message == "stop")
+            stream << request;
+            stream >> response;
+            clog << "received: " << response << endl;
+            if (request == "stop")
                 break;
         }
     }

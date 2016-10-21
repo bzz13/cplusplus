@@ -10,17 +10,52 @@ TCPStream::TCPStream(std::shared_ptr<TCPSocket>& socket)
 {
 }
 
-ssize_t TCPStream::send(const char* buffer, size_t length)
+TCPStream& TCPStream::operator<<(const std::string& message) throw(TCPException)
 {
-    return m_socket->send(buffer, length);
+    if (m_socket->send(message + m_delimetr) >= 0);
+        return (*this);
+    throw TCPException("cant write message");
 }
 
-ssize_t TCPStream::send(const std::string& message)
+TCPStream& TCPStream::operator<<(const char* message) throw(TCPException)
 {
-    return m_socket->send(message);
+    return ((*this) << (std::string(message) + m_delimetr));
 }
 
-ssize_t TCPStream::receive(char* buffer, size_t length, unsigned int timeout_ms)
+TCPStream& TCPStream::operator>>(std::string& message) throw(TCPException)
 {
-    return m_socket->receive(buffer, length, timeout_ms);
+    auto index = m_data.find(m_delimetr[0]);
+    if (index != std::string::npos)
+    {
+        message = m_data.substr(0, index);
+        m_data = m_data.substr(index + 1);
+        return (*this);
+    }
+    else
+    {
+        const size_t size = 1024;
+        char buffer[size];
+        auto length = m_socket->receive(buffer, size);
+        if (length <= 0)
+            throw TCPException("cant read message");
+        buffer[length] = '\0';
+        m_data += std::string(buffer);
+        return (*this) >> message;
+    }
+}
+
+std::shared_ptr<TCPStream>& operator<<(std::shared_ptr<TCPStream>& stream, const std::string& message) throw(TCPException)
+{
+    (*stream)<<message;
+    return stream;
+}
+std::shared_ptr<TCPStream>& operator<<(std::shared_ptr<TCPStream>& stream, const char* message) throw(TCPException)
+{
+    (*stream)<<message;
+    return stream;
+}
+std::shared_ptr<TCPStream>& operator>>(std::shared_ptr<TCPStream>& stream, std::string& message) throw(TCPException)
+{
+    (*stream)>>message;
+    return stream;
 }

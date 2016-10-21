@@ -27,14 +27,19 @@ public:
         m_port = other.m_port;
     }
 
-    bool operator==(const replica &other )
+    bool operator==(const replica &other) const
     {
         return
             m_hostname == other.m_hostname &&
             m_port == other.m_port;
     }
 
-    std::string toString()
+    bool operator!=(const replica &other) const
+    {
+        return !((*this) == other);
+    }
+
+    std::string toString() const
     {
         std::stringstream ss;
         ss << m_hostname << " " << m_port;
