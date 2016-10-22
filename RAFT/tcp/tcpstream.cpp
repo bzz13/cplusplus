@@ -35,12 +35,18 @@ TCPStream& TCPStream::operator>>(std::string& message) throw(TCPException)
     {
         const size_t size = 1024;
         char buffer[size];
-        auto length = m_socket->receive(buffer, size);
-        if (length <= 0)
-            throw TCPException("cant read message");
+        auto length = m_socket->receive(buffer, size, 50);
+
+        if (length == TCPSocket::TCPStatus::connectionClosed)
+            throw TCPException("connectionClosed");
+        if (length == TCPSocket::TCPStatus::connectionReset)
+            throw TCPException("connectionReset");
+        if (length == TCPSocket::TCPStatus::connectionTimedOut)
+            throw TCPTimeoutException("connectionTimedOut");
+
         buffer[length] = '\0';
         m_data += std::string(buffer);
-        return (*this) >> message;
+        return ((*this) >> message);
     }
 }
 

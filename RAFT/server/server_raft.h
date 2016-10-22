@@ -19,8 +19,6 @@
 #include "server_raft_receiver.h"
 #include "server_raft_sender.h"
 
-using namespace std;
-
 template<typename TK, typename TV>
 class server_raft
 {
@@ -68,18 +66,19 @@ public:
         leader = 2,
     };
 
-    server_raft(const replica& self, string replicaspath, string logpath, bool restore = false);
+    server_raft(const replica& self, std::string replicaspath, std::string logpath, bool restore = false);
     ~server_raft();
 
     void start();
 };
 
 template<typename TK, typename TV>
-server_raft<TK, TV>::server_raft(const replica& self, string replicaspath, string logpath, bool restore)
+server_raft<TK, TV>::server_raft(const replica& self, std::string replicaspath, std::string logpath, bool restore)
     : m_term(1), m_status(serverStatus::follower), m_started(false),
       m_self(self), m_leader(self), m_replicas(replicaspath),
       m_store(logpath, restore), m_receiver(self), m_sender(self)
 {
+    std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
     if (restore)
         m_store.showStore();
 }
@@ -97,8 +96,6 @@ void server_raft<TK, TV>::start()
     if (m_started)
         return;
 
-    clog << "!!!!!NOW FOLLOWER!!!" << endl;
-
     m_started = true;
     m_timer.start();
 
@@ -107,6 +104,7 @@ void server_raft<TK, TV>::start()
 
     startHeartBeatWaiting();
     startHeartBeatSending();
+
     // m_status = serverStatus::leader;
 }
 
@@ -117,15 +115,15 @@ void server_raft<TK, TV>::handler(std::shared_ptr<TCPStream>& stream)
     {
         std::string request;
         stream >> request;
-        std::clog << ">>> " << request << std::endl;
+        std::cout << "<<< " << request << std::endl;
         server_proto_parser<TK, TV> parser;
         auto operation = parser.parse(request, stream);
-        {
-            std::unique_lock<std::mutex> lk(m_mtx);
-            if (m_started)
-                operation->applyTo(this);
-        }
+        m_mtx.lock();
+        if (m_started)
+            operation->applyTo(this);
+        m_mtx.unlock();
     }
+    else throw TCPException("stream is null");
 }
 
 
@@ -137,16 +135,17 @@ void server_raft<TK, TV>::startHeartBeatSending()
         heartBeatSender = std::thread([this](){
             while(m_started)
             {
-                std::unique_lock<std::mutex> lk(m_mtx);
+                m_mtx.lock();
                 if (m_status == serverStatus::leader &&
                     m_started)
                 {
-                    lk.unlock();
-                    stringstream heartBeatMessage;
+                    std::stringstream heartBeatMessage;
                     heartBeatMessage << "hb " << m_self << " " << m_term;
                     m_sender.sendRequest(m_replicas, m_self, heartBeatMessage.str());
+                    m_mtx.unlock();
                     std::this_thread::sleep_for(std::chrono::milliseconds(m_timer.getSleepTimeoutMs()));
                 }
+                else m_mtx.unlock();
                 std::this_thread::yield();
             }
         });
@@ -161,16 +160,17 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
         heartBeatWaiter = std::thread([this](){
             while(m_started)
             {
-                std::unique_lock<std::mutex> lk(m_mtx);
+                m_mtx.lock();
                 if(m_status == serverStatus::follower && 
                     m_started && m_timer.isExpired())
                 {
-                    lk.unlock();
+                    std::cout << "****" << std::endl;
                     m_timer.clear();
-                    stringstream voteInitMessage;
-                    voteInitMessage << "vote_init";
-                    m_sender.sendRequest(m_self, voteInitMessage.str());
+                    m_sender.sendRequest(m_self, "vote_init");
+                    m_mtx.unlock();
+                    // std::this_thread::sleep_for(std::chrono::milliseconds(m_timer.getSleepTimeoutMs()));
                 }
+                else m_mtx.unlock();
                 std::this_thread::yield();
             }
         });

@@ -1,7 +1,10 @@
 #include <stdlib.h>
-#include <string>
-#include <memory>
+#include <chrono>
 #include <iostream>
+#include <memory>
+#include <stdlib.h>
+#include <string>
+#include <thread>
 #include "../tcp/tcpconnector.h"
 
 using namespace std;
@@ -9,7 +12,7 @@ using namespace std;
 int main(int argc, char** argv)
 {
     if (argc != 3) {
-        cerr << "usage: " << argv[0] << "<ip> <port>" << endl;
+        cout << "usage: " << argv[0] << "<ip> <port>" << endl;
         return 1;
     }
 
@@ -28,8 +31,9 @@ int main(int argc, char** argv)
 
         if (stream) {
             stream << request;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             stream >> response;
-            clog << "received: " << response << endl;
+            cout << "received: " << response << endl;
             if (request == "stop")
                 break;
         }

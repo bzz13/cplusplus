@@ -12,7 +12,7 @@ class TCPSocket
     void setBlocking();
     void setNonBlocking();
 public:
-    enum {
+    enum  TCPStatus {
         connectionClosed = 0,
         connectionReset = -1,
         connectionTimedOut = -2

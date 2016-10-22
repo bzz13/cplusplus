@@ -29,7 +29,7 @@ public:
 
     virtual void applyTo(server_raft<TK, TV>* server)
     {
-        std::cerr << "undef request" << std::endl;
+        std::cout << "undef request" << std::endl;
         m_stream << "undef request";
     }
 };
@@ -61,7 +61,7 @@ public:
     {
         server->m_term++;
         server->m_status = server_raft<TK, TV>::serverStatus::candidate;
-        std::clog << "!!!!!NOW CANDIDATE!!!" << std::endl;
+        std::cout << "!!!!!NOW CANDIDATE!!!" << std::endl;
         server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(server->m_term)));
         server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(server->m_self)));
         server->m_voting.insert({server->m_term, std::vector<bool>()});
@@ -102,7 +102,7 @@ public:
                     server->m_status == server_raft<TK, TV>::serverStatus::candidate)
                 {
                     server->m_status = server_raft<TK, TV>::serverStatus::follower;
-                    std::clog << "!!!!!NOW FOLLOWER!!!" << std::endl;
+                    std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
                     server->m_timer.reset();
                 }
             }
@@ -112,7 +112,7 @@ public:
                 response << " false";
         }
 
-        std::clog << "-> " << response.str() << std::endl;
+        std::cout << "-> " << response.str() << std::endl;
         server->m_sender.sendRequest(vote_replica, response.str());
     }
 };
@@ -142,7 +142,7 @@ public:
 
     virtual void applyTo(server_raft<TK, TV>* server)
     {
-        std::clog << "<<< fr: " << vote_replica << " msg: " << vote_result << std::endl;
+        std::cout << "<<< fr: " << vote_replica << " msg: " << vote_result << std::endl;
         auto votes = server->m_voting.find(vote_term);
         if (votes != server->m_voting.end())
         {
@@ -151,7 +151,7 @@ public:
                 votes->second.push_back(vote_result);
                 if (hasMajority(votes->second, server->m_replicas.size()))
                 {
-                    std::clog << "!!!!!NOW LEADER!!!" << std::endl;
+                    std::cout << "!!!!!NOW LEADER!!!" << std::endl;
                     server->m_status = server_raft<TK, TV>::serverStatus::leader;
                 }
             }
@@ -187,14 +187,14 @@ public:
             if (server->m_status != server_raft<TK, TV>::serverStatus::follower)
             {
                 server->m_status = server_raft<TK, TV>::serverStatus::follower;
-                std::clog << "!!!!!NOW FOLLOWER!!!" << std::endl;
+                std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
             }
             server->m_term = leader_term;
             server->m_leader = leader_replica;
             server->m_timer.reset();
             response << " true";
         }
-        std::clog << "-> " << response.str() << std::endl;
+        std::cout << "-> " << response.str() << std::endl;
     }
 };
 
@@ -221,7 +221,7 @@ public:
                 response << "redirect " << server->m_leader;
                 break;
         }
-        std::clog << "-> " << response.str() << std::endl;
+        std::cout << "-> " << response.str() << std::endl;
         m_stream << response.str();
     }
 };
@@ -250,7 +250,7 @@ public:
                 response << "redirect " << server->m_leader;
                 break;
         }
-        std::clog << "-> " << response.str() << std::endl;
+        std::cout << "-> " << response.str() << std::endl;
         m_stream << response.str();
     }
 };
@@ -288,7 +288,7 @@ public:
             //     response << "redirect " << server->m_leader;
             //     break;
         // }
-        std::clog << "-> " << response.str() << std::endl;
+        std::cout << "-> " << response.str() << std::endl;
         m_stream << response.str();
     }
 };
@@ -317,7 +317,7 @@ public:
                 response << "not applied";
                 break;
         }
-        std::clog << "-> " << response.str() << std::endl;
+        std::cout << "-> " << response.str() << std::endl;
         // server->m_sender.sendRequest(vote_replica, response.str());
     }
 };

@@ -11,3 +11,12 @@ public:
     explicit TCPException(const std::string& what)
         : runtime_error(what) { }
 };
+
+class TCPTimeoutException: public TCPException
+{
+public:
+    explicit TCPTimeoutException(const char* what)
+        : TCPException(what) { }
+    explicit TCPTimeoutException(const std::string& what)
+        : TCPException(what) { }
+};

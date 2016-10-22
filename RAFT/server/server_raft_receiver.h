@@ -1,27 +1,25 @@
 #pragma once
 
 #include <functional>
-#include <queue>
-#include <mutex>
 #include <memory>
 #include <utility> 
 #include <thread>
 #include "../replicas/replica.h"
 #include "../tcp/tcpacceptor.h"
+#include "../thread_safe_queue.h"
 
 
 template<typename TK, typename TV>
 class server_raft_receiver
 {
     typedef std::shared_ptr<TCPStream> spt_strm;
-    typedef std::unique_lock<std::mutex> lock;
+    typedef thread_safe_queue<spt_strm> ts_queue;
 
     bool                                m_started;
-    std::mutex                          m_mtx;
     std::thread                         m_handler;
-    std::thread                         m_proccer;
+    std::thread                         m_reader;
     TCPAcceptor                         m_acceptor;
-    std::queue<spt_strm>                m_queue;
+    ts_queue                            m_queue;
 
 public:
     server_raft_receiver(const replica& self)
@@ -32,48 +30,54 @@ public:
     ~server_raft_receiver()
     {
         if(m_handler.joinable()) m_handler.join();
-        if(m_proccer.joinable()) m_proccer.join();
+        if(m_reader.joinable()) m_reader.join();
     }
 
-    void startRequestReciving(std::function<void (spt_strm&)> worker)
+    void startRequestReciving(std::function<void (spt_strm&)> streamHandler)
     {
         m_started = m_acceptor.start();
+
         if (!m_handler.joinable())
         {
             m_handler = std::thread([this](){
+                // std::cout << "reciever m_handler started" << std::endl;
                 while (m_started)
                 {
                     auto stream = m_acceptor.accept();
-                    std::clog << "acepted" << std::endl;
-                    lock lk(m_mtx);
-                    if (m_started)
-                        m_queue.push(stream);
-                    std::clog << "receiving m_queue.size: " << m_queue.size() << std::endl;
+                    std::cout << "accepted" << std::endl;
+                    m_queue.push(stream);
+                    // std::cout << "receiving m_queue.size: " << m_queue.size() << std::endl;
+                    std::this_thread::yield();
                 }
             });
         }
 
-        if (!m_proccer.joinable())
+        if (!m_reader.joinable())
         {
-            m_proccer = std::thread([this, worker](){
+            m_reader = std::thread([this, streamHandler](){
+                // std::cout << "reciever m_reader started" << std::endl;
                 while (m_started)
                 {
-                    lock lk(m_mtx);
-                    if (!m_queue.empty())
+                    auto front_p = m_queue.try_pop();
+                    if (!front_p.first)
+                        continue;
+                    auto stream = front_p.second;
+                    try
                     {
-                        auto stream = m_queue.front();
-                        m_queue.pop();
-                        try
-                        {
-                            worker(stream);
-                            m_queue.push(stream);
-                            std::clog << "receiving m_queue.size: " << m_queue.size() << std::endl;
-                        }
-                        catch(TCPException& tcpe)
-                        {
-                            std::cerr << tcpe.what() << std::endl;
-                        }
+                        streamHandler(stream);
+                        m_queue.push(stream);
                     }
+                    catch(TCPTimeoutException& tcptoe)
+                    {
+                        // std::cout << "not ready yet" << std::endl;
+                        m_queue.push(stream);
+                    }
+                    catch(TCPException& tcpe)
+                    {
+                        std::cout << tcpe.what() << std::endl;
+                    }
+                    std::this_thread::yield();
+                    // std::cout << "receiving m_queue.size: " << m_queue.size() << std::endl;
                 }
             });
         }
@@ -81,9 +85,6 @@ public:
 
     void stopRequestReciving()
     {
-        lock lk(m_mtx);
         m_started = false;
-        while(!m_queue.empty())
-            m_queue.pop();
     }
 };

@@ -14,14 +14,14 @@ class server_raft_sender
 {
     typedef std::pair<const replica, const std::string> p;
     typedef std::shared_ptr<TCPStream> spt_strm;
-    typedef std::unique_lock<std::mutex> lock;
+    typedef thread_safe_queue<p> p_queue;
 
     bool                                        m_started;
     replica                                     m_self;
     std::mutex                                  m_mtx;
     std::thread                                 m_handler;
     TCPConnector                                m_connnector;
-    std::queue<p>                               m_queue;
+    p_queue                                     m_queue;
     std::unordered_map<std::string, spt_strm>   m_map;
 
 public:
@@ -37,26 +37,20 @@ public:
 
     void sendRequest(const replica& r, const std::string& message)
     {
-        lock lk(m_mtx);
         m_queue.push(std::make_pair(r, message));
-        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
     }
 
     void sendRequest(replicas& rs, const std::string& message)
     {
-        lock lk(m_mtx);
         for (auto r: rs)
             m_queue.push(std::make_pair(r, message));
-        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
     }
 
     void sendRequest(replicas& rs, const replica& exclude, const std::string& message)
     {
-        lock lk(m_mtx);
         for (auto r: rs)
-            if (!(r == exclude))
+            if (r != exclude)
                 m_queue.push(std::make_pair(r, message));
-        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
     }
 
     void startRequestSending()
@@ -65,35 +59,34 @@ public:
         if (!m_handler.joinable())
         {
             m_handler = std::thread([this](){
+                // std::cout << "sender m_handler started" << std::endl;
                 while (m_started)
                 {
-                    lock lk(m_mtx);
-                    if (!m_queue.empty())
+                    auto front_p = m_queue.try_pop();
+                    if (!front_p.first)
+                        continue;
+                    auto p = front_p.second;
+                    try
                     {
-                        auto p = m_queue.front();
-                        m_queue.pop();
-                        lk.unlock();
-                        std::clog << "sending m_queue.size: " << m_queue.size() << std::endl;
-                        try
+                        auto stream = m_map[p.first.toString()];
+                        if (!stream)
                         {
-                            auto stream = m_map[p.first.toString()];
-                            if (!stream)
-                            {
-                                stream = m_connnector.connect(p.first);
-                                m_map[p.first.toString()] = stream;
-                            }
-                            if (stream && m_started)
-                            {
-                                stream << p.second;
-                                std::clog << ">>> to: " << p.first << " msg: " << p.second << std::endl;
-                            }
+                            stream = m_connnector.connect(p.first, 10);
+                            m_map[p.first.toString()] = stream;
                         }
-                        catch(TCPException& tcpe)
+                        if (stream && m_started)
                         {
-                            m_map.erase(p.first.toString());
-                            std::cerr << tcpe.what() << std::endl;
+                            stream << p.second;
+                            std::cout << ">>> to: " << p.first << " msg: " << p.second << std::endl;
                         }
                     }
+                    catch(TCPException& tcpe)
+                    {
+                        m_map.erase(p.first.toString());
+                        std::cout << tcpe.what() << std::endl;
+                    }
+                    // std::cout << "sending m_queue.size: " << m_queue.size() << std::endl;
+                    std::this_thread::yield();
                 }
             });
         }
@@ -101,9 +94,6 @@ public:
 
     void stopRequestSending()
     {
-        lock lk(m_mtx);
         m_started = false;
-        while(!m_queue.empty())
-            m_queue.pop();
     }
 };

@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 
 	if (argc != 6)
 	{
-		std::cerr << "usage: server <string hosthame> <int port> <string replicaspath> <string logpath> <bool restore 1=true>" << std::endl;
+		std::cout << "usage: server <string hosthame> <int port> <string replicaspath> <string logpath> <bool restore 1=true>" << std::endl;
 		return 1;
 	}
 

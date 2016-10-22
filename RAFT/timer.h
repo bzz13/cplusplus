@@ -33,7 +33,7 @@ public:
 
     void clear()
     {
-        m_started = true;
+        m_started = false;
     }
 
     bool isExpired()

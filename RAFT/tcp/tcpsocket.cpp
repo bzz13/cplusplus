@@ -43,7 +43,7 @@ ssize_t TCPSocket::receive(char* buffer, size_t length, unsigned int timeout_ms)
         ? read(m_socket, buffer, length)
         : (waitForReadEvent(timeout_ms)
             ? read(m_socket, buffer, length)
-            : connectionTimedOut);
+            : TCPStatus::connectionTimedOut);
 }
 
 bool TCPSocket::waitForReadEvent(const unsigned int& timeout_ms)
@@ -160,7 +160,7 @@ bool TCPSocket::connect(const char* hostname, const int& port, const unsigned in
                 getsockopt(m_socket, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &len);
                 if (valopt)
                 {
-                    throw TCPException("connect() error");
+                    return false;
                 }
                 else
                 {
@@ -170,12 +170,12 @@ bool TCPSocket::connect(const char* hostname, const int& port, const unsigned in
             }
             else
             {
-                throw TCPException("connect() timed out");
+                return false;
             }
         }
         else
         {
-            throw TCPException("connect() error");
+            return false;
         }
     }
 
