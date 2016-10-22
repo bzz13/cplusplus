@@ -19,8 +19,8 @@ public:
 
 	unsigned int maxIndex() const;
 
-	T get(const unsigned int& i);
-	void set(const unsigned int& i, const T& t);
+	T get(const unsigned int i);
+	void set(const unsigned int i, const T& t);
 	void app(const T& t);
 };
 
@@ -59,7 +59,7 @@ unsigned int logger<T>::maxIndex() const
 }
 
 template<typename T>
-T logger<T>::get(const unsigned int& i)
+T logger<T>::get(const unsigned int i)
 {
 	if (f.is_open()) 
 	{
@@ -80,7 +80,7 @@ T logger<T>::get(const unsigned int& i)
 }
 
 template<typename T>
-void logger<T>::set(const unsigned int& i, const T& t)
+void logger<T>::set(const unsigned int i, const T& t)
 {
 	if (f.is_open()) 
 	{

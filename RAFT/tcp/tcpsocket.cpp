@@ -12,7 +12,7 @@
 #include "tcpsocket.h"
 #include "tcpexception.h"
 
-TCPSocket::TCPSocket(const int& socket): m_socket(socket)
+TCPSocket::TCPSocket(const int socket): m_socket(socket)
 {
 }
 
@@ -46,7 +46,7 @@ ssize_t TCPSocket::receive(char* buffer, size_t length, unsigned int timeout_ms)
             : TCPStatus::connectionTimedOut);
 }
 
-bool TCPSocket::waitForReadEvent(const unsigned int& timeout_ms)
+bool TCPSocket::waitForReadEvent(const unsigned int timeout_ms)
 {
     fd_set sdset;
     struct timeval tv;
@@ -58,7 +58,7 @@ bool TCPSocket::waitForReadEvent(const unsigned int& timeout_ms)
     return select(m_socket + 1, &sdset, nullptr, nullptr, &tv) > 0;
 }
 
-bool TCPSocket::bind(const std::string& hostname, const int& port)
+bool TCPSocket::bind(const std::string& hostname, const int port)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
@@ -104,7 +104,7 @@ bool TCPSocket::resolveHostName(const char* hostname, struct in_addr* addr)
     return result != 0;
 }
 
-bool TCPSocket::connect(const char* hostname, const int& port)
+bool TCPSocket::connect(const char* hostname, const int port)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
@@ -118,7 +118,7 @@ bool TCPSocket::connect(const char* hostname, const int& port)
     return ::connect(m_socket, (struct sockaddr*)&address, length) == 0;
 }
 
-bool TCPSocket::connect(const char* hostname, const int& port, const unsigned int& timeout)
+bool TCPSocket::connect(const char* hostname, const int port, const unsigned int timeout)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);

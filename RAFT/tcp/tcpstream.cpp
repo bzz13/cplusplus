@@ -12,7 +12,7 @@ TCPStream::TCPStream(std::shared_ptr<TCPSocket>& socket)
 
 TCPStream& TCPStream::operator<<(const std::string& message) throw(TCPException)
 {
-    if (m_socket->send(message + m_delimetr) >= 0);
+    if (m_socket->send(message + m_delimetr) > 0);
         return (*this);
     throw TCPException("cant write message");
 }

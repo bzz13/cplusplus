@@ -15,7 +15,7 @@ public:
     replica(const replica& other)
         : replica(other.m_hostname, other.m_port) { }
 
-    replica(const std::string& hostname, const int& port)
+    replica(const std::string& hostname, const int port)
         : m_hostname(hostname), m_port(port) { }
 
     const std::string&  host() const { return m_hostname; }
