@@ -18,6 +18,8 @@ public:
 	store(const 		char* logpath, bool restore = false);
 	store(const  std::string& logpath, bool restore = false);
 
+	int lastAppliedIndex();
+
 	TV& get(const TK& tk);
 	void set(const TK& tk, const TV& tv);
 	void del(const TK& tk);
@@ -40,6 +42,13 @@ store<TK, TV>::store(const std::string& logpath, bool restore): log(logpath, res
 			apply(log.get(i));
 		}
 	}
+}
+
+
+template<typename TK, typename TV>
+int store<TK, TV>::lastAppliedIndex()
+{
+	return log.maxIndex();
 }
 
 template<typename TK, typename TV>

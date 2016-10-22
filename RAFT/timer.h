@@ -19,16 +19,16 @@ public:
     {
         m_started = true;
         m_start_waiting_clock = std::chrono::high_resolution_clock::now();
-        // m_waiting_period = std::chrono::milliseconds(rand() % 5000 + 1000);
-        m_waiting_period = std::chrono::milliseconds(5000);
+        m_waiting_period = std::chrono::milliseconds(rand() % 5000 + 1000);
+        // m_waiting_period = std::chrono::milliseconds(5000);
     }
 
     void reset()
     {
         m_started = true;
         m_start_waiting_clock = std::chrono::high_resolution_clock::now();
-        // m_waiting_period = std::chrono::milliseconds(rand() % 500 + 750);
-        m_waiting_period = std::chrono::milliseconds(5000);
+        m_waiting_period = std::chrono::milliseconds(rand() % 500 + 750);
+        // m_waiting_period = std::chrono::milliseconds(5000);
     }
 
     void clear()
@@ -46,7 +46,7 @@ public:
 
     int getSleepTimeoutMs()
     {
-        // return rand() % 500;
-        return 1000;
+        return rand() % 500;
+        // return 1000;
     }
 };

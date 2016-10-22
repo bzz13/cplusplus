@@ -35,6 +35,7 @@ class server_raft
 
     int                             m_term;
     int                             m_status;
+    int                             m_leader_last_applied_index;
     bool                            m_started;
     replica                         m_self;
     replica                         m_leader;
@@ -81,6 +82,7 @@ server_raft<TK, TV>::server_raft(const replica& self, std::string replicaspath, 
     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
     if (restore)
         m_store.showStore();
+    m_leader_last_applied_index = restore ? m_store.lastAppliedIndex() : 0;
 }
 
 template<typename TK, typename TV>
@@ -97,15 +99,12 @@ void server_raft<TK, TV>::start()
         return;
 
     m_started = true;
-    m_timer.start();
 
     m_receiver.startRequestReciving([this](std::shared_ptr<TCPStream>& stream){ handler(stream); });
     m_sender.startRequestSending();
 
     startHeartBeatWaiting();
     startHeartBeatSending();
-
-    // m_status = serverStatus::leader;
 }
 
 template<typename TK, typename TV>
@@ -118,6 +117,7 @@ void server_raft<TK, TV>::handler(std::shared_ptr<TCPStream>& stream)
         std::cout << "<<< " << request << std::endl;
         server_proto_parser<TK, TV> parser;
         auto operation = parser.parse(request, stream);
+
         m_mtx.lock();
         if (m_started)
             operation->applyTo(this);
@@ -140,7 +140,7 @@ void server_raft<TK, TV>::startHeartBeatSending()
                     m_started)
                 {
                     std::stringstream heartBeatMessage;
-                    heartBeatMessage << "hb " << m_self << " " << m_term;
+                    heartBeatMessage << "hb " << m_self << " " << m_term << " " << m_leader_last_applied_index;
                     m_sender.sendRequest(m_replicas, m_self, heartBeatMessage.str());
                     m_mtx.unlock();
                     std::this_thread::sleep_for(std::chrono::milliseconds(m_timer.getSleepTimeoutMs()));
@@ -155,6 +155,7 @@ void server_raft<TK, TV>::startHeartBeatSending()
 template<typename TK, typename TV>
 void server_raft<TK, TV>::startHeartBeatWaiting()
 {
+    m_timer.start();
     if (!heartBeatWaiter.joinable())
     {
         heartBeatWaiter = std::thread([this](){
@@ -164,13 +165,10 @@ void server_raft<TK, TV>::startHeartBeatWaiting()
                 if(m_status == serverStatus::follower && 
                     m_started && m_timer.isExpired())
                 {
-                    std::cout << "****" << std::endl;
                     m_timer.clear();
                     m_sender.sendRequest(m_self, "vote_init");
-                    m_mtx.unlock();
-                    // std::this_thread::sleep_for(std::chrono::milliseconds(m_timer.getSleepTimeoutMs()));
                 }
-                else m_mtx.unlock();
+                m_mtx.unlock();
                 std::this_thread::yield();
             }
         });

@@ -168,16 +168,17 @@ class server_proto_heartbeat: protected server_proto_operation<TK, TV>
 {
     replica leader_replica;
     int     leader_term;
+    int     leader_last_applied_index;
 public:
     server_proto_heartbeat(std::istream& requestStream)
     {
-        requestStream >> leader_replica >> leader_term;
+        requestStream >> leader_replica >> leader_term >> leader_last_applied_index;
     }
 
     virtual void applyTo(server_raft<TK, TV>* server)
     {
         std::stringstream response;
-        response << leader_replica << " " << leader_term;
+        response << "hb_for " << leader_replica << " " << leader_term;
         if (leader_term < server->m_term)
         {
             response << " false";
@@ -195,6 +196,27 @@ public:
             response << " true";
         }
         std::cout << "-> " << response.str() << std::endl;
+        server->m_sender.sendRequest(leader_replica, response.str());
+    }
+};
+
+template<typename TK, typename TV>
+class server_proto_heartbeat_for: protected server_proto_operation<TK, TV>
+{
+    replica hb_replica;
+    int     hb_term;
+    bool    hb_result;
+public:
+    server_proto_heartbeat_for(std::istream& requestStream)
+    {
+        std::string result;
+        requestStream >> hb_replica >> hb_term >> result;
+        hb_result = (result == "true");
+    }
+
+    virtual void applyTo(server_raft<TK, TV>* server)
+    {
+        // std::cout << "== " << hb_result << std::endl;
     }
 };
 
