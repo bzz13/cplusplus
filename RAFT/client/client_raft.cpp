@@ -5,9 +5,28 @@
 #include <stdlib.h>
 #include <string>
 #include <thread>
+#include "../tcp/tcpstream.h"
 #include "../tcp/tcpconnector.h"
 
 using namespace std;
+
+string getResult(std::shared_ptr<TCPStream>& stream)
+{
+    string response;
+    while(true)
+    {
+        try
+        {
+            stream >> response;
+            cout << "received: \"" << response << "\"" << endl;
+            break;
+        }
+        catch(TCPTimeoutException& tcptoe)
+        {
+        }
+    }
+    return response;
+}
 
 int main(int argc, char** argv)
 {
@@ -23,7 +42,6 @@ int main(int argc, char** argv)
     while (true)
     {
         string request;
-        string response;
         getline(cin, request);
 
         if (request == "exit")
@@ -31,9 +49,7 @@ int main(int argc, char** argv)
 
         if (stream) {
             stream << request;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            stream >> response;
-            cout << "received: " << response << endl;
+            auto response = getResult(stream);
             if (request == "stop")
                 break;
         }

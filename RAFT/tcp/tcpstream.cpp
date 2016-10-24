@@ -1,3 +1,4 @@
+#include <iostream>
 #include "tcpstream.h"
 
 TCPStream::TCPStream(TCPSocket* socket)
@@ -24,18 +25,21 @@ TCPStream& TCPStream::operator<<(const char* message) throw(TCPException)
 
 TCPStream& TCPStream::operator>>(std::string& message) throw(TCPException)
 {
+    if (m_data == "\n") m_data = "";
+    // std::cout << "before - current socket buffer: \"" << m_data << "\"" << std::endl;
     auto index = m_data.find(m_delimetr[0]);
     if (index != std::string::npos)
     {
         message = m_data.substr(0, index);
         m_data = m_data.substr(index + 1);
+        // std::cout << "after - current socket buffer: \"" << m_data << "\"" << std::endl;
         return (*this);
     }
     else
     {
         const size_t size = 1024;
         char buffer[size];
-        auto length = m_socket->receive(buffer, size, 50);
+        auto length = m_socket->receive(buffer, size, 10);
 
         if (length == TCPSocket::TCPStatus::connectionClosed)
             throw TCPException("connectionClosed");
@@ -44,9 +48,10 @@ TCPStream& TCPStream::operator>>(std::string& message) throw(TCPException)
         if (length == TCPSocket::TCPStatus::connectionTimedOut)
             throw TCPTimeoutException("connectionTimedOut");
 
+        // std::cout << "received from socket " << length << " bytes" << std::endl;
         buffer[length] = '\0';
-        m_data += std::string(buffer);
-        return ((*this) >> message);
+        m_data = m_data + std::string(buffer);
+        return this->operator>>(message);
     }
 }
 

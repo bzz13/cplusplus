@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <utility> 
@@ -60,7 +61,10 @@ public:
                 {
                     auto front_p = m_queue.try_pop();
                     if (!front_p.first)
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
                         continue;
+                    }
                     auto stream = front_p.second;
                     try
                     {

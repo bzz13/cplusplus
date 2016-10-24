@@ -125,9 +125,9 @@ class server_proto_vote_for: protected server_proto_operation<TK, TV>
     int     vote_term;
     bool    vote_result;
 
-    bool hasMajority(const std::vector<bool>& votes, const int& total)
+    bool hasMajority(const std::vector<bool>& votes, const int total)
     {
-        int count;
+        int count = 0;
         for (auto vote: votes)
             if (vote) ++count;
         return count > total / 2;
@@ -216,7 +216,6 @@ public:
 
     virtual void applyTo(server_raft<TK, TV>* server)
     {
-        // std::cout << "== " << hb_result << std::endl;
     }
 };
 
@@ -293,53 +292,100 @@ public:
     {
         std::stringstream response;
         std::stringstream forwardingRequestStream;
-        // switch(server->m_status)
-        // {
-            // TODO: implement this
-            // case server_raft<TK, TV>::serverStatus::leader:
-            //     forwardingRequestStream << "syncset " << key << " " << val;
-            //     if (server->isMajority(server->sendForAll(forwardingRequestStream.str(), val), val))
-            //     {
-                    server->m_store.set(key, val);
-                    response << server->m_store.get(key);
-            //     }
-            //     else
-            //         response << "not applied";
-            //     break;
-            // default:
-            //     response << "redirect " << server->m_leader;
-            //     break;
-        // }
-        std::cout << "-> " << response.str() << std::endl;
-        m_stream << response.str();
+        switch(server->m_status)
+        {
+            case server_raft<TK, TV>::serverStatus::leader:
+                server->m_syncs[server->m_last_applied_index + 1] = std::make_tuple(m_stream, key, val, std::vector<bool>());
+                forwardingRequestStream << "syncset " << (server->m_last_applied_index + 1) << " " << key << " " << val;
+                server->m_sender.sendRequest(server->m_replicas, server->m_self, forwardingRequestStream.str());
+                break;
+            default:
+                response << "redirect " << server->m_leader;
+                m_stream << response.str();
+                break;
+        }
     }
 };
 
 template<typename TK, typename TV>
 class server_proto_syncset: protected server_proto_operation<TK, TV>
 {
+    int m_index;
     TK key;
     TV val;
 public:
     server_proto_syncset(std::istream& requestStream)
     {
-        requestStream >> key >> val;
+        requestStream >> m_index >> key >> val;
     }
 
     virtual void applyTo(server_raft<TK, TV>* server)
     {
         std::stringstream response;
+        response << "syncset_for " << m_index << " ";
         switch(server->m_status)
         {
-            case server_raft<TK, TV>::serverStatus::follower:
-                server->m_store.set(key, val);
-                response << server->m_store.get(key);
+            case server_raft<TK, TV>::serverStatus::leader:
+                response << "false";
                 break;
             default:
-                response << "not applied";
+                server->m_last_applied_index = m_index;
+                server->m_store.set(key, val);
+                response << "true";
                 break;
         }
+        server->m_sender.sendRequest(server->m_leader, response.str());
         std::cout << "-> " << response.str() << std::endl;
-        // server->m_sender.sendRequest(vote_replica, response.str());
+    }
+};
+
+template<typename TK, typename TV>
+class server_proto_syncset_for: protected server_proto_operation<TK, TV>
+{
+    int  m_index;
+    bool m_result;
+
+    bool hasMajority(const std::vector<bool>& syncs, const int total)
+    {
+        int count = 0;
+        for (auto sync: syncs)
+            if (sync) ++count;
+        return (count >= total / 2);
+    }
+public:
+    server_proto_syncset_for(std::istream& requestStream)
+    {
+        std::string result;
+        requestStream >> m_index >> result;
+        m_result = (result == "true");
+    }
+
+    virtual void applyTo(server_raft<TK, TV>* server)
+    {
+        std::stringstream response;
+
+        auto findAt = server->m_syncs.find(m_index);
+        if (findAt != server->m_syncs.end())
+        {
+            std::get<3>(server->m_syncs[m_index]).push_back(m_result);
+
+            if (hasMajority(std::get<3>(server->m_syncs[m_index]), server->m_replicas.size() - 1))
+            {
+                server->m_store.set(std::get<1>(server->m_syncs[m_index]), std::get<2>(server->m_syncs[m_index]));
+                server->m_last_applied_index ++;
+                std::get<0>(server->m_syncs[m_index]) << "true";
+                std::cout << "-> " << "true" << std::endl;
+                server->m_syncs.erase(m_index);
+            }
+            else
+            {
+                if(std::get<3>(server->m_syncs[m_index]).size() > server->m_replicas.size() / 2)
+                {
+                    std::get<0>(server->m_syncs[m_index]) << "false";
+                    std::cout << "-> " << "false" << std::endl;
+                    server->m_syncs.erase(m_index);
+                }
+            }
+        }
     }
 };

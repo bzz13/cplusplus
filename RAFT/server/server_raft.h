@@ -5,6 +5,7 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 #include "../replicas/replicas.h"
@@ -32,10 +33,11 @@ class server_raft
     friend class server_proto_del<TK, TV>;
     friend class server_proto_set<TK, TV>;
     friend class server_proto_syncset<TK, TV>;
+    friend class server_proto_syncset_for<TK, TV>;
 
     int                             m_term;
     int                             m_status;
-    int                             m_leader_last_applied_index;
+    int                             m_last_applied_index;
     bool                            m_started;
     replica                         m_self;
     replica                         m_leader;
@@ -53,6 +55,8 @@ class server_raft
     std::unique_ptr<replica>                    m_vote_for_replica;
     std::unique_ptr<int>                        m_vote_for_term;
     std::unordered_map<int, std::vector<bool>>  m_voting;
+
+    std::unordered_map<int, std::tuple<std::shared_ptr<TCPStream>, TK, TV, std::vector<bool>>> m_syncs;
 
     void startHeartBeatSending();
     void startHeartBeatWaiting();
@@ -82,7 +86,7 @@ server_raft<TK, TV>::server_raft(const replica& self, std::string replicaspath, 
     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
     if (restore)
         m_store.showStore();
-    m_leader_last_applied_index = restore ? m_store.lastAppliedIndex() : 0;
+    m_last_applied_index = restore ? m_store.lastAppliedIndex() : 0;
 }
 
 template<typename TK, typename TV>
@@ -140,7 +144,7 @@ void server_raft<TK, TV>::startHeartBeatSending()
                     m_started)
                 {
                     std::stringstream heartBeatMessage;
-                    heartBeatMessage << "hb " << m_self << " " << m_term << " " << m_leader_last_applied_index;
+                    heartBeatMessage << "hb " << m_self << " " << m_term << " " << m_last_applied_index;
                     m_sender.sendRequest(m_replicas, m_self, heartBeatMessage.str());
                     m_mtx.unlock();
                     std::this_thread::sleep_for(std::chrono::milliseconds(m_timer.getSleepTimeoutMs()));
