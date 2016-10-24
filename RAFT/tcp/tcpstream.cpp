@@ -25,7 +25,8 @@ TCPStream& TCPStream::operator<<(const char* message) throw(TCPException)
 
 TCPStream& TCPStream::operator>>(std::string& message) throw(TCPException)
 {
-    if (m_data == "\n") m_data = "";
+    int i = 0; while (m_data[i] == '\n') ++i; m_data = m_data.substr(i);
+
     // std::cout << "before - current socket buffer: \"" << m_data << "\"" << std::endl;
     auto index = m_data.find(m_delimetr[0]);
     if (index != std::string::npos)
