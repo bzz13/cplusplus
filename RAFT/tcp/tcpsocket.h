@@ -7,7 +7,7 @@ class TCPSocket
 {
     int m_socket;
 
-    bool waitForReadEvent(const unsigned int timeout);
+    bool waitForReadEvent(const unsigned int timeout_ms);
     bool resolveHostName(const char* hostname, struct in_addr* addr);
     void setBlocking();
     void setNonBlocking();
@@ -25,10 +25,10 @@ public:
 
     ssize_t send(const char* buffer, size_t length);
     ssize_t send(const std::string& message);
-    ssize_t receive(char* buffer, size_t length, unsigned int timeout = 0);
+    ssize_t receive(char* buffer, size_t length, unsigned int timeout_ms = 0);
 
     bool connect(const char* hostname, const int port);
-    bool connect(const char* hostname, const int port, const unsigned int timeout);
+    bool connect(const char* hostname, const int port, const unsigned int timeout_ms);
 
     bool bind(const std::string& hostname, const int port);
     bool listen();

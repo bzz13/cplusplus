@@ -4,7 +4,6 @@
 #include <string>
 #include <sstream>
 #include "server_proto_operation.h"
-#include "server_proto_operation.h"
 
 template<typename TK, typename TV>
 class server_proto_parser

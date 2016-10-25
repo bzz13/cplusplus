@@ -46,8 +46,7 @@ public:
     virtual void applyTo(server_raft<TK, TV>* server)
     {
         server->m_started = false;
-        server->m_receiver.stopRequestReciving();
-        server->m_sender.stopRequestSending();
+        server->m_connector.stop();
         m_stream << "stopped";
     }
 };
@@ -66,9 +65,9 @@ public:
         server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(server->m_self)));
         server->m_voting.insert({server->m_term, std::vector<bool>()});
 
-        std::stringstream voteMessage;
-        voteMessage << "vote " << server->m_self << " " << server->m_term;
-        server->m_sender.sendRequest(server->m_replicas, voteMessage.str());
+        // std::stringstream voteMessage;
+        // voteMessage << "vote " << server->m_self << " " << server->m_term;
+        // server->m_sender.sendRequest(server->m_replicas, voteMessage.str());
     }
 };
 
@@ -113,7 +112,7 @@ public:
         }
 
         std::cout << "-> " << response.str() << std::endl;
-        server->m_sender.sendRequest(vote_replica, response.str());
+        // server->m_sender.sendRequest(vote_replica, response.str());
     }
 };
 
@@ -206,7 +205,7 @@ public:
             response << " true";
         }
         std::cout << "-> " << response.str() << std::endl;
-        server->m_sender.sendRequest(leader_replica, response.str());
+        // server->m_sender.sendRequest(leader_replica, response.str());
     }
 };
 
@@ -307,7 +306,7 @@ public:
             case server_raft<TK, TV>::serverStatus::leader:
                 server->m_syncs[server->m_last_applied_index + 1] = std::make_tuple(m_stream, key, val, std::vector<bool>());
                 forwardingRequestStream << "syncset " << (server->m_last_applied_index + 1) << " " << key << " " << val;
-                server->m_sender.sendRequest(server->m_replicas, server->m_self, forwardingRequestStream.str());
+                // server->m_sender.sendRequest(server->m_replicas, server->m_self, forwardingRequestStream.str());
                 break;
             default:
                 response << "redirect " << server->m_leader;
@@ -344,7 +343,7 @@ public:
                 response << "true";
                 break;
         }
-        server->m_sender.sendRequest(server->m_leader, response.str());
+        // server->m_sender.sendRequest(server->m_leader, response.str());
         std::cout << "-> " << response.str() << std::endl;
     }
 };

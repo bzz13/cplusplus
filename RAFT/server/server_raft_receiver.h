@@ -18,26 +18,12 @@ class server_raft_receiver
 
     bool                                m_started;
     std::thread                         m_handler;
-    std::thread                         m_reader;
     TCPAcceptor                         m_acceptor;
     ts_queue                            m_queue;
 
-public:
-    server_raft_receiver(const replica& self)
-        : m_started(false), m_acceptor(self)
-    {
-    }
-
-    ~server_raft_receiver()
-    {
-        if(m_handler.joinable()) m_handler.join();
-        if(m_reader.joinable()) m_reader.join();
-    }
-
-    void startRequestReciving(std::function<void (spt_strm&)> streamHandler)
+    void startRequestReciving()
     {
         m_started = m_acceptor.start();
-
         if (!m_handler.joinable())
         {
             m_handler = std::thread([this](){
@@ -50,38 +36,39 @@ public:
                 }
             });
         }
-
-        if (!m_reader.joinable())
-        {
-            m_reader = std::thread([this, streamHandler](){
-                while (m_started)
-                {
-                    auto front_p = m_queue.try_pop();
-                    if (front_p.first)
-                    {
-                        auto stream = front_p.second;
-                        try
-                        {
-                            streamHandler(stream);
-                            m_queue.push(stream);
-                        }
-                        catch(TCPTimeoutException& tcptoe)
-                        {
-                            // std::cout << "not ready yet" << std::endl;
-                            m_queue.push(stream);
-                        }
-                        catch(TCPException& tcpe)
-                        {
-                            std::cout << tcpe.what() << std::endl;
-                        }
-                    }
-                    std::this_thread::yield();
-                }
-            });
-        }
+    }
+public:
+    server_raft_receiver(const replica& self)
+        : m_started(false), m_acceptor(self)
+    {
+        startRequestReciving();
     }
 
-    void stopRequestReciving()
+    ~server_raft_receiver()
+    {
+        if(m_handler.joinable()) m_handler.join();
+    }
+
+
+    std::pair<bool, std::shared_ptr<TCPStream>> try_get_stream()
+    {
+        if (m_started)
+        {
+            auto front_p = m_queue.try_pop();
+            if (front_p.first)
+            {
+                return std::make_pair(true, front_p.second);
+            }
+        }
+        return std::make_pair(false, nullptr);
+    }
+
+    void delay_stream_later(std::shared_ptr<TCPStream>& stream)
+    {
+        m_queue.push(stream);
+    }
+
+    void stop()
     {
         m_started = false;
     }

@@ -52,7 +52,7 @@ bool TCPSocket::waitForReadEvent(const unsigned int timeout_ms)
     struct timeval tv;
 
     tv.tv_sec = timeout_ms/1000;
-    tv.tv_usec = timeout_ms*1000;
+    tv.tv_usec = (timeout_ms%1000)*1000;
     FD_ZERO(&sdset);
     FD_SET(m_socket, &sdset);
     return select(m_socket + 1, &sdset, nullptr, nullptr, &tv) > 0;
@@ -118,7 +118,7 @@ bool TCPSocket::connect(const char* hostname, const int port)
     return ::connect(m_socket, (struct sockaddr*)&address, length) == 0;
 }
 
-bool TCPSocket::connect(const char* hostname, const int port, const unsigned int timeout)
+bool TCPSocket::connect(const char* hostname, const int port, const unsigned int timeout_ms)
 {
     struct sockaddr_in address;
     socklen_t length = sizeof(address);
@@ -140,8 +140,8 @@ bool TCPSocket::connect(const char* hostname, const int port, const unsigned int
         if (errno == EINPROGRESS)
         {
             struct timeval tv;
-            tv.tv_sec = timeout;
-            tv.tv_usec = 0;
+            tv.tv_sec = timeout_ms/1000;
+            tv.tv_usec = (timeout_ms%1000)*1000;
 
             fd_set sdset;
             FD_ZERO(&sdset);
