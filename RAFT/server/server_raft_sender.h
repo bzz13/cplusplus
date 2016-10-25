@@ -59,33 +59,32 @@ public:
         if (!m_handler.joinable())
         {
             m_handler = std::thread([this](){
-                // std::cout << "sender m_handler started" << std::endl;
                 while (m_started)
                 {
                     auto front_p = m_queue.try_pop();
-                    if (!front_p.first)
-                        continue;
-                    auto p = front_p.second;
-                    try
+                    if (front_p.first)
                     {
-                        auto stream = m_map[p.first.toString()];
-                        if (!stream)
+                        auto p = front_p.second;
+                        try
                         {
-                            stream = m_connnector.connect(p.first, 10);
-                            m_map[p.first.toString()] = stream;
+                            auto stream = m_map[p.first.toString()];
+                            if (!stream)
+                            {
+                                stream = m_connnector.connect(p.first, 10);
+                                m_map[p.first.toString()] = stream;
+                            }
+                            if (stream && m_started)
+                            {
+                                stream << p.second;
+                                std::cout << ">>> to: " << p.first << " msg: " << p.second << std::endl;
+                            }
                         }
-                        if (stream && m_started)
+                        catch(TCPException& tcpe)
                         {
-                            stream << p.second;
-                            std::cout << ">>> to: " << p.first << " msg: " << p.second << std::endl;
+                            m_map.erase(p.first.toString());
+                            std::cout << tcpe.what() << std::endl;
                         }
                     }
-                    catch(TCPException& tcpe)
-                    {
-                        m_map.erase(p.first.toString());
-                        std::cout << tcpe.what() << std::endl;
-                    }
-                    // std::cout << "sending m_queue.size: " << m_queue.size() << std::endl;
                     std::this_thread::yield();
                 }
             });

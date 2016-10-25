@@ -99,7 +99,7 @@ public:
                 server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(vote_replica)));
                 server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(vote_term)));
                 if (*(server->m_vote_for_term) < vote_term && 
-                    server->m_status == server_raft<TK, TV>::serverStatus::candidate)
+                    server->m_status != server_raft<TK, TV>::serverStatus::follower)
                 {
                     server->m_status = server_raft<TK, TV>::serverStatus::follower;
                     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
@@ -142,7 +142,6 @@ public:
 
     virtual void applyTo(server_raft<TK, TV>* server)
     {
-        std::cout << "<<< fr: " << vote_replica << " msg: " << vote_result << std::endl;
         auto votes = server->m_voting.find(vote_term);
         if (votes != server->m_voting.end())
         {
@@ -153,6 +152,17 @@ public:
                 {
                     std::cout << "!!!!!NOW LEADER!!!" << std::endl;
                     server->m_status = server_raft<TK, TV>::serverStatus::leader;
+                    server->m_voting.erase(vote_term);
+                }
+                else
+                {
+                    if (votes->second.size() > server->m_replicas.size() / 2)
+                    {
+                        server->m_status = server_raft<TK, TV>::serverStatus::follower;
+                        std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
+                        server->m_timer.reset();
+                        server->m_voting.erase(vote_term);
+                    }
                 }
             }
             else
