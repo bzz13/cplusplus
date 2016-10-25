@@ -13,8 +13,12 @@ class server_proto_parser
     typedef std::shared_ptr<TCPStream> spt_str;
 
 public:
-    spt_spo parse(const std::string& request, spt_str& stream)
+    spt_spo parse(spt_str& stream)
     {
+        std::string request;
+        stream >> request;
+        std::cout << "<<< " << request << std::endl;
+
         std::stringstream requestStream(request);
         std::string method;
         requestStream >> method;

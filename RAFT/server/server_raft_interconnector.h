@@ -15,13 +15,16 @@
 template<typename TK, typename TV>
 class server_raft_interconnector
 {
-    replica                         m_self;
+    typedef server_proto_operation<TK, TV> spo;
+    typedef std::shared_ptr<spo> spt_spo;
+
     server_raft_receiver<TK, TV>    m_receiver;
     server_raft_sender              m_sender;
     server_proto_parser<TK, TV>     m_parser;
 
 public:
-    server_raft_interconnector(const replica& self): m_self(self), m_receiver(self), m_sender(self)
+    server_raft_interconnector(const replica& self)
+        :m_receiver(self), m_sender(self)
     {
     }
 
@@ -31,7 +34,7 @@ public:
             m_sender.sendRequest(p.first, p.second);
     }
 
-    std::pair<bool, std::shared_ptr<server_proto_operation<TK, TV>>> try_get_message(const int timeout = 0)
+    std::pair<bool, spt_spo> try_get_message(const int timeout = 0)
     {
         auto p = m_receiver.try_get_stream();
         if (p.first)
@@ -40,18 +43,14 @@ public:
             if (stream)
             {
                 try{
-                    std::string request;
-                    stream >> request;
-                    std::cout << "<<< " << request << std::endl;
-                    server_proto_parser<TK, TV> parser;
-                    auto operation = parser.parse(request, stream);
-                    m_receiver.delay_stream_later(stream);
+                    auto operation = m_parser.parse(stream);
+                    m_receiver.delay_stream(stream);
                     return std::make_pair(true, operation);
                 }
                 catch(TCPTimeoutException& tcptoe)
                 {
                     // std::cout << "not ready yet" << std::endl;
-                    m_receiver.delay_stream_later(stream);
+                    m_receiver.delay_stream(stream);
                 }
                 catch(TCPException& tcpe)
                 {

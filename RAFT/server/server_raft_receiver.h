@@ -63,7 +63,7 @@ public:
         return std::make_pair(false, nullptr);
     }
 
-    void delay_stream_later(std::shared_ptr<TCPStream>& stream)
+    void delay_stream(std::shared_ptr<TCPStream>& stream)
     {
         m_queue.push(stream);
     }
