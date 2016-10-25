@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <memory>
 #include <sstream>
 #include <thread>
 #include <mutex>
@@ -45,7 +44,6 @@ class server_raft
 
     server_raft_interconnector<TK, TV> m_connector;
 
-    std::mutex      m_mtx;
     timer           m_timer;
 
     std::unique_ptr<replica>                    m_vote_for_replica;

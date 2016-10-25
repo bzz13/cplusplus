@@ -24,7 +24,7 @@ class server_raft_sender
     p_queue                                     m_queue;
     std::unordered_map<std::string, spt_strm>   m_map;
 
-    void startRequestSending()
+    void start()
     {
         m_started = true;
         if (!m_handler.joinable())
@@ -66,7 +66,7 @@ public:
     server_raft_sender(const replica& self)
         : m_started(false), m_self(self)
     {
-        startRequestSending();
+        start();
     }
 
     ~server_raft_sender()
@@ -75,7 +75,7 @@ public:
             m_handler.join();
     }
 
-    void sendRequest(const replica& r, const std::string& message)
+    void send_request(const replica& r, const std::string& message)
     {
         m_queue.push(std::make_pair(r, message));
     }

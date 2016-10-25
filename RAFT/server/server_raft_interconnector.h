@@ -31,10 +31,10 @@ public:
     void send_messages(std::vector<std::pair<const replica, const std::string>> msgs)
     {
         for(auto p: msgs)
-            m_sender.sendRequest(p.first, p.second);
+            m_sender.send_request(p.first, p.second);
     }
 
-    std::pair<bool, spt_spo> try_get_message(const int timeout = 0)
+    std::pair<bool, spt_spo> try_get_message()
     {
         auto p = m_receiver.try_get_stream();
         if (p.first)
@@ -42,7 +42,8 @@ public:
             auto stream = p.second;
             if (stream)
             {
-                try{
+                try
+                {
                     auto operation = m_parser.parse(stream);
                     m_receiver.delay_stream(stream);
                     return std::make_pair(true, operation);

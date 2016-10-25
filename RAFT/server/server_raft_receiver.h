@@ -21,7 +21,7 @@ class server_raft_receiver
     TCPAcceptor                         m_acceptor;
     ts_queue                            m_queue;
 
-    void startRequestReciving()
+    void start()
     {
         m_started = m_acceptor.start();
         if (!m_handler.joinable())
@@ -41,26 +41,21 @@ public:
     server_raft_receiver(const replica& self)
         : m_started(false), m_acceptor(self)
     {
-        startRequestReciving();
+        start();
     }
 
     ~server_raft_receiver()
     {
-        if(m_handler.joinable()) m_handler.join();
+        if(m_handler.joinable())
+            m_handler.join();
     }
 
 
     std::pair<bool, std::shared_ptr<TCPStream>> try_get_stream()
     {
-        if (m_started)
-        {
-            auto front_p = m_queue.try_pop();
-            if (front_p.first)
-            {
-                return std::make_pair(true, front_p.second);
-            }
-        }
-        return std::make_pair(false, nullptr);
+        return m_started 
+            ? m_queue.try_pop()
+            : std::make_pair(false, nullptr);
     }
 
     void delay_stream(std::shared_ptr<TCPStream>& stream)
