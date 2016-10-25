@@ -20,7 +20,7 @@ TCPStream& TCPStream::operator<<(const std::string& message) throw(TCPException)
 
 TCPStream& TCPStream::operator<<(const char* message) throw(TCPException)
 {
-    return ((*this) << (std::string(message) + m_delimetr));
+    return ((*this) << std::string(message));
 }
 
 TCPStream& TCPStream::operator>>(std::string& message) throw(TCPException)
