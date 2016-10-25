@@ -103,8 +103,7 @@ template<typename TK, typename TV>
 std::vector<std::pair<const replica, const std::string>> server_raft<TK, TV>::getMessagesByCurrentState()
 {
     std::vector<std::pair<const replica, const std::string>> results;
-    std::stringstream heartBeatMessage;
-    std::stringstream voteMessage;
+    std::stringstream message;
 
     switch(m_status)
     {
@@ -116,15 +115,15 @@ std::vector<std::pair<const replica, const std::string>> server_raft<TK, TV>::ge
             }
             break;
         case serverStatus::candidate:
-            voteMessage << "vote " << m_self << " " << m_term;
+            message << "vote " << m_self << " " << m_term;
             for(auto r: m_replicas)
-                results.push_back({r, voteMessage.str()});
+                results.push_back({r, message.str()});
             break;
         case serverStatus::leader:
-                heartBeatMessage << "hb " << m_self << " " << m_term << " " << m_last_applied_index;
-                for(auto r: m_replicas)
-                    if(r != m_self)
-                        results.push_back({r, heartBeatMessage.str()});
+            message << "hb " << m_self << " " << m_term << " " << m_last_applied_index;
+            for(auto r: m_replicas)
+                if(r != m_self)
+                    results.push_back({r, message.str()});
             break;
         default:
             break;
