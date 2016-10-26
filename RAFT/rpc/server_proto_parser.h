@@ -13,7 +13,7 @@ class server_proto_parser
     typedef std::shared_ptr<TCPStream> spt_str;
 
 public:
-    spt_spo parse(spt_str& stream)
+    spt_spo parse(spt_str& stream) throw(TCPException)
     {
         std::string request;
         stream >> request;

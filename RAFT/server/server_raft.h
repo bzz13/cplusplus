@@ -91,7 +91,7 @@ void server_raft<TK, TV>::start()
     {
         auto incomingMessage = m_connector.try_get_message();
         if (incomingMessage.first)
-            incomingMessage.second->applyTo(this);
+            incomingMessage.second->apply_to(this);
         auto outgoingMessages = getMessagesByCurrentState();
         m_connector.send_messages(outgoingMessages);
     }

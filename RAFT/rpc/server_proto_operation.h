@@ -14,7 +14,7 @@ template<typename TK, typename TV>
 class server_proto_operation
 {
 public:
-    virtual void applyTo(server_raft<TK, TV>* server) = 0;
+    virtual void apply_to(server_raft<TK, TV>* server) = 0;
 };
 
 
@@ -27,7 +27,7 @@ public:
     {
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::cout << "undef request" << std::endl;
         m_stream << "undef request";
@@ -43,7 +43,7 @@ public:
     {
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         server->m_started = false;
         server->m_connector.stop();
@@ -56,7 +56,7 @@ template<typename TK, typename TV>
 class server_proto_vote_init: protected server_proto_operation<TK, TV>
 {
 public:
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         server->m_term++;
         server->m_status = server_raft<TK, TV>::serverStatus::candidate;
@@ -82,7 +82,7 @@ public:
         requestStream >> vote_replica >> vote_term;
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::stringstream response;
         response << "vote_for " << vote_replica << " " << vote_term;
@@ -139,7 +139,7 @@ public:
         vote_result = (vote == "true");
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         auto votes = server->m_voting.find(vote_term);
         if (votes != server->m_voting.end())
@@ -184,7 +184,7 @@ public:
         requestStream >> leader_replica >> leader_term >> leader_last_applied_index;
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::stringstream response;
         response << "hb_for " << leader_replica << " " << leader_term;
@@ -223,7 +223,7 @@ public:
         hb_result = (result == "true");
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
     }
 };
@@ -239,7 +239,7 @@ public:
         requestStream >> key;
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::stringstream response;
         switch(server->m_status)
@@ -267,7 +267,7 @@ public:
         requestStream >> key;
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::stringstream response;
         switch(server->m_status)
@@ -297,7 +297,7 @@ public:
         requestStream >> key >> val;
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::stringstream response;
         std::stringstream forwardingRequestStream;
@@ -328,7 +328,7 @@ public:
         requestStream >> m_index >> key >> val;
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::stringstream response;
         response << "syncset_for " << m_index << " ";
@@ -369,7 +369,7 @@ public:
         m_result = (result == "true");
     }
 
-    virtual void applyTo(server_raft<TK, TV>* server)
+    virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::stringstream response;
 
