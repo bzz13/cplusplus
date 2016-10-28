@@ -9,8 +9,16 @@ class timer
     std::chrono::high_resolution_clock::time_point  m_start_waiting_clock;
     std::chrono::milliseconds                       m_waiting_period;
     bool                                            m_started = false;
+    int                                             m_inital_delay;
+    int                                             m_inital_delay_rand;
+    int                                             m_reset_delay;
+    int                                             m_reset_delay_rand;
 public:
-    timer()
+    timer(int inital_delay, int inital_delay_rand, int reset_delay, int reset_delay_rand)
+        : m_inital_delay(inital_delay),
+          m_inital_delay_rand(inital_delay_rand),
+          m_reset_delay(reset_delay),
+          m_reset_delay_rand(reset_delay_rand)
     {
         srand(time(nullptr));
     }
@@ -19,16 +27,14 @@ public:
     {
         m_started = true;
         m_start_waiting_clock = std::chrono::high_resolution_clock::now();
-        m_waiting_period = std::chrono::milliseconds(rand() % 5000 + 1000);
-        // m_waiting_period = std::chrono::milliseconds(5000);
+        m_waiting_period = std::chrono::milliseconds(rand() % m_inital_delay_rand + m_inital_delay);
     }
 
     void reset()
     {
         m_started = true;
         m_start_waiting_clock = std::chrono::high_resolution_clock::now();
-        m_waiting_period = std::chrono::milliseconds(rand() % 500 + 750);
-        // m_waiting_period = std::chrono::milliseconds(5000);
+        m_waiting_period = std::chrono::milliseconds(rand() % m_reset_delay_rand + m_reset_delay);
     }
 
     void clear()
@@ -47,6 +53,5 @@ public:
     int getSleepTimeoutMs()
     {
         return rand() % 500;
-        // return 1000;
     }
 };

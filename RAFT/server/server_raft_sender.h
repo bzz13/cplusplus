@@ -44,9 +44,8 @@ class server_raft_sender
                                 stream = m_connnector.connect(p.first, 10);
                                 m_map[p.first.toString()] = stream;
                             }
-                            if (stream && m_started)
+                            if (send_request(stream, p.second))
                             {
-                                stream << p.second;
                                 std::cout << ">>> to: " << p.first << " msg: " << p.second << std::endl;
                             }
                         }
@@ -78,6 +77,16 @@ public:
     void send_request(const replica& r, const std::string& message)
     {
         m_queue.push(std::make_pair(r, message));
+    }
+
+    bool send_request(spt_strm stream, const std::string& message)
+    {
+        if (stream && m_started)
+        {
+            stream << message;
+            return true;
+        }
+        return false;
     }
 
 

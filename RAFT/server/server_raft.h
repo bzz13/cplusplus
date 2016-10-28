@@ -44,7 +44,8 @@ class server_raft
 
     server_raft_interconnector<TK, TV> m_connector;
 
-    timer           m_timer;
+    timer           m_vote_timer;
+    timer           m_hb_timer;
 
     std::unique_ptr<replica>                    m_vote_for_replica;
     std::unique_ptr<int>                        m_vote_for_term;
@@ -52,7 +53,7 @@ class server_raft
 
     std::unordered_map<int, std::tuple<std::shared_ptr<TCPStream>, TK, TV, std::vector<bool>>> m_syncs;
 
-    std::vector<std::pair<const replica, const std::string>> getMessagesByCurrentState();
+    std::vector<std::pair<const replica, const std::string>> get_extra_messages_by_current_state();
 public:
     enum serverStatus
     {
@@ -70,7 +71,8 @@ template<typename TK, typename TV>
 server_raft<TK, TV>::server_raft(const replica& self, std::string replicaspath, std::string logpath, bool restore)
     : m_term(1), m_status(serverStatus::follower), m_started(false),
       m_self(self), m_leader(self), m_replicas(replicaspath), m_connector(self),
-      m_store(logpath, restore)
+      m_store(logpath, restore),
+      m_vote_timer(1000, 5000, 750, 500), m_hb_timer(0, 50, 50, 100)
 {
     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
     if (restore)
@@ -85,20 +87,20 @@ void server_raft<TK, TV>::start()
         return;
 
     m_started = true;
-    m_timer.start();
+    m_vote_timer.start();
 
     while(m_started)
     {
         auto incomingMessage = m_connector.try_get_message();
         if (incomingMessage.first)
             incomingMessage.second->apply_to(this);
-        auto outgoingMessages = getMessagesByCurrentState();
-        m_connector.send_messages(outgoingMessages);
+        auto extraMessages = get_extra_messages_by_current_state();
+        m_connector.send_messages(extraMessages);
     }
 }
 
 template<typename TK, typename TV>
-std::vector<std::pair<const replica, const std::string>> server_raft<TK, TV>::getMessagesByCurrentState()
+std::vector<std::pair<const replica, const std::string>> server_raft<TK, TV>::get_extra_messages_by_current_state()
 {
     std::vector<std::pair<const replica, const std::string>> results;
     std::stringstream message;
@@ -106,22 +108,21 @@ std::vector<std::pair<const replica, const std::string>> server_raft<TK, TV>::ge
     switch(m_status)
     {
         case serverStatus::follower:
-            if (m_timer.isExpired())
+            if (m_vote_timer.isExpired())
             {
-                m_timer.clear();
+                m_vote_timer.clear();
                 results.push_back({m_self, "vote_init"});
             }
             break;
-        case serverStatus::candidate:
-            message << "vote " << m_self << " " << m_term;
-            for(auto r: m_replicas)
-                results.push_back({r, message.str()});
-            break;
         case serverStatus::leader:
-            message << "hb " << m_self << " " << m_term << " " << m_last_applied_index;
-            for(auto r: m_replicas)
-                if(r != m_self)
-                    results.push_back({r, message.str()});
+            if (m_hb_timer.isExpired())
+            {
+                m_hb_timer.reset();
+                message << "hb " << m_self << " " << m_term << " " << m_last_applied_index;
+                for(auto r: m_replicas)
+                    if(r != m_self)
+                        results.push_back({r, message.str()});
+            }
             break;
         default:
             break;

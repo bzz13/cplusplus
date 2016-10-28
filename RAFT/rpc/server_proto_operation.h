@@ -30,7 +30,7 @@ public:
     virtual void apply_to(server_raft<TK, TV>* server)
     {
         std::cout << "undef request" << std::endl;
-        m_stream << "undef request";
+        server->m_connector.send_message(m_stream, "undef request");
     }
 };
 
@@ -47,7 +47,7 @@ public:
     {
         server->m_started = false;
         server->m_connector.stop();
-        m_stream << "stopped";
+        server->m_connector.send_message(m_stream, "stopped");
     }
 };
 
@@ -65,9 +65,9 @@ public:
         server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(server->m_self)));
         server->m_voting.insert({server->m_term, std::vector<bool>()});
 
-        // std::stringstream voteMessage;
-        // voteMessage << "vote " << server->m_self << " " << server->m_term;
-        // server->m_sender.sendRequest(server->m_replicas, voteMessage.str());
+        std::stringstream voteMessage;
+        voteMessage << "vote " << server->m_self << " " << server->m_term;
+        server->m_connector.send_messages(server->m_replicas, voteMessage.str());
     }
 };
 
@@ -102,7 +102,7 @@ public:
                 {
                     server->m_status = server_raft<TK, TV>::serverStatus::follower;
                     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
-                    server->m_timer.reset();
+                    server->m_vote_timer.reset();
                 }
             }
             if (*(server->m_vote_for_replica) == vote_replica)
@@ -112,7 +112,7 @@ public:
         }
 
         std::cout << "-> " << response.str() << std::endl;
-        // server->m_sender.sendRequest(vote_replica, response.str());
+        server->m_connector.send_message(vote_replica, response.str());
     }
 };
 
@@ -150,6 +150,7 @@ public:
                 if (hasMajority(votes->second, server->m_replicas.size()))
                 {
                     std::cout << "!!!!!NOW LEADER!!!" << std::endl;
+                    server->m_hb_timer.start();
                     server->m_status = server_raft<TK, TV>::serverStatus::leader;
                     server->m_voting.erase(vote_term);
                 }
@@ -159,7 +160,7 @@ public:
                     {
                         server->m_status = server_raft<TK, TV>::serverStatus::follower;
                         std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
-                        server->m_timer.reset();
+                        server->m_vote_timer.reset();
                         server->m_voting.erase(vote_term);
                     }
                 }
@@ -201,11 +202,11 @@ public:
             }
             server->m_term = leader_term;
             server->m_leader = leader_replica;
-            server->m_timer.reset();
+            server->m_vote_timer.reset();
             response << " true";
         }
         std::cout << "-> " << response.str() << std::endl;
-        // server->m_sender.sendRequest(leader_replica, response.str());
+        server->m_connector.send_message(leader_replica, response.str());
     }
 };
 
@@ -252,7 +253,7 @@ public:
                 break;
         }
         std::cout << "-> " << response.str() << std::endl;
-        m_stream << response.str();
+        server->m_connector.send_message(m_stream, response.str());
     }
 };
 
@@ -281,7 +282,7 @@ public:
                 break;
         }
         std::cout << "-> " << response.str() << std::endl;
-        m_stream << response.str();
+        server->m_connector.send_message(m_stream, response.str());
     }
 };
 
@@ -306,11 +307,11 @@ public:
             case server_raft<TK, TV>::serverStatus::leader:
                 server->m_syncs[server->m_last_applied_index + 1] = std::make_tuple(m_stream, key, val, std::vector<bool>());
                 forwardingRequestStream << "syncset " << (server->m_last_applied_index + 1) << " " << key << " " << val;
-                // server->m_sender.sendRequest(server->m_replicas, server->m_self, forwardingRequestStream.str());
+                server->m_connector.send_messages(server->m_replicas, server->m_self, forwardingRequestStream.str());
                 break;
             default:
                 response << "redirect " << server->m_leader;
-                m_stream << response.str();
+                server->m_connector.send_message(m_stream, response.str());
                 break;
         }
     }
@@ -343,8 +344,8 @@ public:
                 response << "true";
                 break;
         }
-        // server->m_sender.sendRequest(server->m_leader, response.str());
         std::cout << "-> " << response.str() << std::endl;
+        server->m_connector.send_message(server->m_leader, response.str());
     }
 };
 

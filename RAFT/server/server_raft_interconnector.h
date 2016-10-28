@@ -34,6 +34,29 @@ public:
             m_sender.send_request(p.first, p.second);
     }
 
+    void send_messages(replicas& rs, const std::string& message)
+    {
+        for(auto r: rs)
+            m_sender.send_request(r, message);
+    }
+
+    void send_messages(replicas& rs, replica& exclude, const std::string& message)
+    {
+        for(auto r: rs)
+            if (r != exclude)
+                m_sender.send_request(r, message);
+    }
+
+    void send_message(replica& r, const std::string& message)
+    {
+        m_sender.send_request(r, message);
+    }
+
+    void send_message(std::shared_ptr<TCPStream> stream, const std::string& message)
+    {
+        m_sender.send_request(stream, message);
+    }
+
     std::pair<bool, spt_spo> try_get_message()
     {
         auto p = m_receiver.try_get_stream();
