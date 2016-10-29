@@ -30,7 +30,7 @@ public:
                 }
                 else
                 {
-                    std::cout << " cant connected to " << r << std::endl;
+                    std::cout << "cant connected to " << r << std::endl;
                 }
             }
             if (stream)
@@ -38,14 +38,15 @@ public:
                 stream << message;
                 std::cout << ">>> to: " << r << " msg: " << message << std::endl;
             }
+            else
+            {
+                std::cout << "cant send request to: " << r << " msg: " << message << std::endl;
+            }
         }
         catch(TCPException& tcpe)
         {
             if (m_map.find(r.toString()) != m_map.end())
-            {
                 m_map.erase(r.toString());
-                std::cout << "erased" << std::endl;
-            }
             std::cout << tcpe.what() << std::endl;
         }
         catch(...)
