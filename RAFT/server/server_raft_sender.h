@@ -21,27 +21,14 @@ public:
             auto stream = m_map[r.toString()];
             if (!stream)
             {
-                // std::cout << "try connect to " << r << std::endl;
                 stream = m_connector.connect(r, 10);
-                // if (stream)
-                // {
-                    // std::cout << "connected to " << r << std::endl;
+                if (stream)
+                {
                     // m_map[r.toString()] = stream;
-                // }
-                // else
-                // {
-                    // std::cout << "cant connected to " << r << std::endl;
-                // }
+                }
             }
-            if (stream)
-            {
-                stream << message;
-                std::cout << ">>> to: " << r << " msg: " << message << std::endl;
-            }
-            else
-            {
-                // std::cout << "cant send request to: " << r << " msg: " << message << std::endl;
-            }
+            stream << message;
+            std::cout << ">>> to: " << r << " msg: " << message << std::endl;
         }
         catch(TCPException& tcpe)
         {
