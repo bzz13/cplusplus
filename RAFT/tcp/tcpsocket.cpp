@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 #include <fcntl.h>
 #include <netdb.h>
@@ -18,7 +19,14 @@ TCPSocket::TCPSocket(const int socket): m_socket(socket)
 
 TCPSocket::~TCPSocket()
 {
-    close(m_socket);
+    try
+    {
+        close(m_socket);
+    }
+    catch(...)
+    {
+        std::cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%" << std::endl;
+    }
 }
 
 

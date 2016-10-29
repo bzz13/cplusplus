@@ -72,7 +72,7 @@ server_raft<TK, TV>::server_raft(const replica& self, std::string replicaspath, 
     : m_term(1), m_status(serverStatus::follower), m_started(false),
       m_self(self), m_leader(self), m_replicas(replicaspath), m_connector(self),
       m_store(logpath, restore),
-      m_vote_timer(1000, 5000, 750, 500), m_hb_timer(0, 50, 50, 100)
+      m_vote_timer(1000, 5000, 750, 500), m_hb_timer(0, 50, 500, 100)
 {
     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
     if (restore)
@@ -88,14 +88,25 @@ void server_raft<TK, TV>::start()
 
     m_started = true;
     m_vote_timer.start();
+    m_hb_timer.start();
 
     while(m_started)
     {
-        auto incomingMessage = m_connector.try_get_message();
-        if (incomingMessage.first)
-            incomingMessage.second->apply_to(this);
-        auto extraMessages = get_extra_messages_by_current_state();
-        m_connector.send_messages(extraMessages);
+        try
+        {
+            auto incomingMessage = m_connector.try_get_message();
+            if (incomingMessage.first)
+            {
+                std::cout << "has incoming message" << std::endl;
+                incomingMessage.second->apply_to(this);
+            }
+            auto extraMessages = get_extra_messages_by_current_state();
+            m_connector.send_messages(extraMessages);
+        }
+        catch(...)
+        {
+            std::cout << "#############################" << std::endl;
+        }
     }
 }
 

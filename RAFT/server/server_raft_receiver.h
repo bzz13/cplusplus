@@ -32,7 +32,6 @@ class server_raft_receiver
                     auto stream = m_acceptor.accept();
                     std::cout << "accepted" << std::endl;
                     m_queue.push(stream);
-                    std::this_thread::yield();
                 }
             });
         }

@@ -205,8 +205,8 @@ public:
             server->m_vote_timer.reset();
             response << " true";
         }
-        std::cout << "-> " << response.str() << std::endl;
         server->m_connector.send_message(leader_replica, response.str());
+        std::cout << "-> " << response.str() << std::endl;
     }
 };
 

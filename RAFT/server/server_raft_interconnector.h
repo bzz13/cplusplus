@@ -24,7 +24,7 @@ class server_raft_interconnector
 
 public:
     server_raft_interconnector(const replica& self)
-        :m_receiver(self), m_sender(self)
+        :m_receiver(self)
     {
     }
 
@@ -88,6 +88,5 @@ public:
     void stop()
     {
         m_receiver.stop();
-        m_sender.stop();
     }
 };
