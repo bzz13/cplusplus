@@ -41,11 +41,11 @@ public:
         }
         catch(TCPException& tcpe)
         {
-            // if (m_map.find(r.toString()) != m_map.end())
-            // {
-            //     m_map.erase(r.toString());
-            //     std::cout << "erased" << std::endl;
-            // }
+            if (m_map.find(r.toString()) != m_map.end())
+            {
+                m_map.erase(r.toString());
+                std::cout << "erased" << std::endl;
+            }
             std::cout << tcpe.what() << std::endl;
         }
         catch(...)

@@ -94,10 +94,7 @@ void server_raft<TK, TV>::start()
     {
         auto incomingMessage = m_connector.try_get_message();
         if (incomingMessage.first)
-        {
-            std::cout << "has incoming message" << std::endl;
             incomingMessage.second->apply_to(this);
-        }
         auto extraMessages = get_extra_messages_by_current_state();
         m_connector.send_messages(extraMessages);
     }

@@ -112,8 +112,8 @@ public:
                 response << " false";
         }
 
-        std::cout << "-> " << response.str() << std::endl;
         server->m_connector.send_message(vote_replica, response.str());
+        std::cout << "-> " << response.str() << std::endl;
     }
 };
 
@@ -243,8 +243,8 @@ public:
                 response << "redirect " << server->m_leader;
                 break;
         }
-        std::cout << "-> " << response.str() << std::endl;
         server->m_connector.send_message(m_stream, response.str());
+        std::cout << "-> " << response.str() << std::endl;
     }
 };
 
@@ -272,8 +272,8 @@ public:
                 response << "redirect " << server->m_leader;
                 break;
         }
-        std::cout << "-> " << response.str() << std::endl;
         server->m_connector.send_message(m_stream, response.str());
+        std::cout << "-> " << response.str() << std::endl;
     }
 };
 
@@ -335,8 +335,8 @@ public:
                 response << "true";
                 break;
         }
-        std::cout << "-> " << response.str() << std::endl;
         server->m_connector.send_message(server->m_leader, response.str());
+        std::cout << "-> " << response.str() << std::endl;
     }
 };
 
