@@ -21,17 +21,17 @@ public:
             auto stream = m_map[r.toString()];
             if (!stream)
             {
-                std::cout << "try connect to " << r << std::endl;
+                // std::cout << "try connect to " << r << std::endl;
                 stream = m_connector.connect(r, 10);
-                if (stream)
-                {
-                    std::cout << "connected to " << r << std::endl;
+                // if (stream)
+                // {
+                    // std::cout << "connected to " << r << std::endl;
                     // m_map[r.toString()] = stream;
-                }
-                else
-                {
-                    std::cout << "cant connected to " << r << std::endl;
-                }
+                // }
+                // else
+                // {
+                    // std::cout << "cant connected to " << r << std::endl;
+                // }
             }
             if (stream)
             {
@@ -40,14 +40,14 @@ public:
             }
             else
             {
-                std::cout << "cant send request to: " << r << " msg: " << message << std::endl;
+                // std::cout << "cant send request to: " << r << " msg: " << message << std::endl;
             }
         }
         catch(TCPException& tcpe)
         {
             if (m_map.find(r.toString()) != m_map.end())
                 m_map.erase(r.toString());
-            std::cout << tcpe.what() << std::endl;
+            // std::cout << tcpe.what() << std::endl;
         }
         catch(...)
         {

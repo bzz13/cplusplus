@@ -47,8 +47,8 @@ class server_raft
     timer           m_vote_timer;
     timer           m_hb_timer;
 
-    std::unique_ptr<replica>                    m_vote_for_replica;
-    std::unique_ptr<int>                        m_vote_for_term;
+    replica                                     m_vote_for_replica;
+    int                                         m_vote_for_term = 0;
     std::unordered_map<int, std::vector<bool>>  m_voting;
 
     std::unordered_map<int, std::tuple<std::shared_ptr<TCPStream>, TK, TV, std::vector<bool>>> m_syncs;
@@ -118,8 +118,8 @@ std::vector<std::pair<const replica, const std::string>> server_raft<TK, TV>::ge
         case serverStatus::candidate:
             if(m_vote_timer.isExpired())
             {
-                m_voting.erase(m_term);
                 m_vote_timer.clear();
+                m_voting.erase(m_term);
                 results.push_back({m_self, "vote_init"});
             }
             break;

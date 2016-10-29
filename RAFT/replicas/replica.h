@@ -21,12 +21,6 @@ public:
     const std::string&  host() const { return m_hostname; }
     int                 port() const { return m_port; }
 
-    void operator=(const replica &other )
-    {
-        m_hostname = other.m_hostname;
-        m_port = other.m_port;
-    }
-
     bool operator==(const replica &other) const
     {
         return
@@ -37,6 +31,11 @@ public:
     bool operator!=(const replica &other) const
     {
         return !((*this) == other);
+    }
+
+    operator bool()
+    {
+        return (*this) != replica("undef", 0);
     }
 
     std::string toString() const

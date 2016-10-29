@@ -20,7 +20,7 @@ public:
     TCPStream& operator<<(const std::string& message) throw(TCPException)
     {
         auto length = m_socket->send(message + m_delimetr);
-        std::cout << "TCPStream operator<< result: " << length << std::endl;
+        // std::cout << "TCPStream operator<< result: " << length << std::endl;
         if (length > 0);
             return (*this);
         throw TCPException("cant write message");

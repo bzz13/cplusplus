@@ -76,7 +76,7 @@ public:
             }
             catch(TCPException& tcpe)
             {
-                std::cout << tcpe.what() << std::endl;
+                // std::cout << tcpe.what() << std::endl;
             }
         }
         return std::make_pair(false, nullptr);

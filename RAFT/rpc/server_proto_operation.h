@@ -61,9 +61,11 @@ public:
         server->m_term++;
         server->m_status = server_raft<TK, TV>::serverStatus::candidate;
         std::cout << "!!!!!NOW CANDIDATE!!!" << std::endl;
-        server->m_vote_timer.reset();
-        server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(server->m_term)));
-        server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(server->m_self)));
+        server->m_vote_timer.start();
+        server->m_vote_for_term = server->m_term;
+        server->m_vote_for_replica = server->m_self;
+
+        server->m_voting.clear();
         server->m_voting.insert({server->m_term, std::vector<bool>()});
 
         std::stringstream voteMessage;
@@ -93,20 +95,20 @@ public:
         }
         else
         {
-            if ((!server->m_vote_for_term && !server->m_vote_for_replica) || 
-                *(server->m_vote_for_term) < vote_term)
+            if ((!server->m_vote_for_term && !server->m_vote_for_replica) || // еще ни разу не голосовал
+                server->m_vote_for_term < vote_term)                         // или голосовал за меньший терм
             {
-                server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(vote_replica)));
-                server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(vote_term)));
-                if (*(server->m_vote_for_term) < vote_term && 
+                server->m_vote_for_replica = vote_replica;
+                server->m_vote_for_term = vote_term;
+                if (server->m_vote_for_term < vote_term && 
                     server->m_status != server_raft<TK, TV>::serverStatus::follower)
                 {
                     server->m_status = server_raft<TK, TV>::serverStatus::follower;
                     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
-                    server->m_vote_timer.reset();
+                    server->m_vote_timer.start();
                 }
             }
-            if (*(server->m_vote_for_replica) == vote_replica)
+            if (server->m_vote_for_replica == vote_replica)
                 response << " true";
             else
                 response << " false";
@@ -152,13 +154,12 @@ public:
                 {
                     server->m_status = server_raft<TK, TV>::serverStatus::leader;
                     std::cout << "!!!!!NOW LEADER!!!" << std::endl;
-                    server->m_hb_timer.start();
-                    server->m_voting.erase(vote_term);
+                    server->m_voting.erase(findAt);
                 }
             }
             else
             {
-                server->m_voting.erase(vote_term);
+                server->m_voting.erase(findAt);
             }
         }
     }
