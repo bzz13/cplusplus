@@ -63,23 +63,20 @@ public:
         if (p.first)
         {
             auto stream = p.second;
-            if (stream)
+            try
             {
-                try
-                {
-                    auto operation = m_parser.parse(stream);
-                    m_receiver.delay_stream(stream);
-                    return std::make_pair(true, operation);
-                }
-                catch(TCPTimeoutException& tcptoe)
-                {
-                    // std::cout << "not ready yet" << std::endl;
-                    m_receiver.delay_stream(stream);
-                }
-                catch(TCPException& tcpe)
-                {
-                    std::cout << tcpe.what() << std::endl;
-                }
+                auto operation = m_parser.parse(stream);
+                m_receiver.delay_stream(stream);
+                return std::make_pair(true, operation);
+            }
+            catch(TCPTimeoutException& tcptoe)
+            {
+                // std::cout << "not ready yet" << std::endl;
+                m_receiver.delay_stream(stream);
+            }
+            catch(TCPException& tcpe)
+            {
+                std::cout << tcpe.what() << std::endl;
             }
         }
         return std::make_pair(false, nullptr);

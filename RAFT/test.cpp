@@ -32,5 +32,6 @@ int main(int argc, char** argv)
 	server_raft<std::string, int> raft(self, argv[3], argv[4], atoi(argv[5]) == 1);
 	raft.start();
 
+	std::cout << "exit " << 0 << std::endl;
 	return 0;
 }

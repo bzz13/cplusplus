@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -16,7 +17,7 @@ class server_raft_receiver
     typedef std::shared_ptr<TCPStream> spt_strm;
     typedef thread_safe_queue<spt_strm> ts_queue;
 
-    bool                                m_started;
+    volatile bool                       m_started;
     std::thread                         m_handler;
     TCPAcceptor                         m_acceptor;
     ts_queue                            m_queue;

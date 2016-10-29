@@ -61,6 +61,7 @@ public:
         server->m_term++;
         server->m_status = server_raft<TK, TV>::serverStatus::candidate;
         std::cout << "!!!!!NOW CANDIDATE!!!" << std::endl;
+        server->m_vote_timer.reset();
         server->m_vote_for_term = std::move(std::unique_ptr<int>(new int(server->m_term)));
         server->m_vote_for_replica = std::move(std::unique_ptr<replica>(new replica(server->m_self)));
         server->m_voting.insert({server->m_term, std::vector<bool>()});
@@ -141,28 +142,18 @@ public:
 
     virtual void apply_to(server_raft<TK, TV>* server)
     {
-        auto votes = server->m_voting.find(vote_term);
-        if (votes != server->m_voting.end())
+        auto findAt = server->m_voting.find(vote_term);
+        if (findAt != server->m_voting.end())
         {
             if (server->m_term == vote_term)
             {
-                votes->second.push_back(vote_result);
-                if (hasMajority(votes->second, server->m_replicas.size()))
+                findAt->second.push_back(vote_result);
+                if (hasMajority(findAt->second, server->m_replicas.size()))
                 {
+                    server->m_status = server_raft<TK, TV>::serverStatus::leader;
                     std::cout << "!!!!!NOW LEADER!!!" << std::endl;
                     server->m_hb_timer.start();
-                    server->m_status = server_raft<TK, TV>::serverStatus::leader;
                     server->m_voting.erase(vote_term);
-                }
-                else
-                {
-                    if (votes->second.size() > server->m_replicas.size() / 2)
-                    {
-                        server->m_status = server_raft<TK, TV>::serverStatus::follower;
-                        std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
-                        server->m_vote_timer.reset();
-                        server->m_voting.erase(vote_term);
-                    }
                 }
             }
             else

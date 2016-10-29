@@ -92,21 +92,14 @@ void server_raft<TK, TV>::start()
 
     while(m_started)
     {
-        try
+        auto incomingMessage = m_connector.try_get_message();
+        if (incomingMessage.first)
         {
-            auto incomingMessage = m_connector.try_get_message();
-            if (incomingMessage.first)
-            {
-                std::cout << "has incoming message" << std::endl;
-                incomingMessage.second->apply_to(this);
-            }
-            auto extraMessages = get_extra_messages_by_current_state();
-            m_connector.send_messages(extraMessages);
+            std::cout << "has incoming message" << std::endl;
+            incomingMessage.second->apply_to(this);
         }
-        catch(...)
-        {
-            std::cout << "#############################" << std::endl;
-        }
+        auto extraMessages = get_extra_messages_by_current_state();
+        m_connector.send_messages(extraMessages);
     }
 }
 
@@ -121,6 +114,14 @@ std::vector<std::pair<const replica, const std::string>> server_raft<TK, TV>::ge
         case serverStatus::follower:
             if (m_vote_timer.isExpired())
             {
+                m_vote_timer.clear();
+                results.push_back({m_self, "vote_init"});
+            }
+            break;
+        case serverStatus::candidate:
+            if(m_vote_timer.isExpired())
+            {
+                m_voting.erase(m_term);
                 m_vote_timer.clear();
                 results.push_back({m_self, "vote_init"});
             }
