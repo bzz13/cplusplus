@@ -29,8 +29,10 @@ public:
     {
         auto length = m_socket->send(message + m_delimetr);
         // std::cout << "TCPStream operator<< result: " << length << std::endl;
-        if (length > 0);
+        if (length > 0)
+        {
             return (*this);
+        }
         throw TCPException("cant write message");
     }
     TCPStream& operator<<(const char* message) throw(TCPException)
