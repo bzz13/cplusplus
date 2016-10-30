@@ -22,10 +22,7 @@ public:
             if (!stream)
             {
                 stream = m_connector.connect(r, 10);
-                if (stream)
-                {
-                    // m_map[r.toString()] = stream;
-                }
+                // m_map[r.toString()] = stream;
             }
             stream << message;
             std::cout << ">>> to: " << r << " msg: " << message << std::endl;
