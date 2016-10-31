@@ -31,7 +31,7 @@ public:
         {
             if (m_map.find(r.toString()) != m_map.end())
                 m_map.erase(r.toString());
-            // std::cout << tcpe.what() << std::endl;
+            std::cout << tcpe.what() << std::endl;
         }
         catch(...)
         {

@@ -7,6 +7,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <signal.h>
 #include "../replicas/replicas.h"
 #include "../store.h"
 #include "../timer.h"
@@ -74,6 +75,7 @@ server_raft<TK, TV>::server_raft(const replica& self, std::string replicaspath, 
       m_store(logpath, restore),
       m_vote_timer(1000, 5000, 750, 500), m_hb_timer(0, 50, 500, 100)
 {
+    signal(SIGPIPE, SIG_IGN);
     std::cout << "!!!!!NOW FOLLOWER!!!" << std::endl;
     if (restore)
         m_store.showStore();

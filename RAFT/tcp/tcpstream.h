@@ -9,7 +9,7 @@
 class TCPStream
 {
     std::shared_ptr<TCPSocket>  m_socket;
-    std::string                 m_data;
+    std::string                 m_data = "";
     const std::string           m_delimetr = "\n";
 
     friend class TCPAcceptor;

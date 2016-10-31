@@ -64,7 +64,14 @@ public:
     }
     ~TCPSocket()
     {
-        close(m_socket);
+        try
+        {
+            close(m_socket);
+        }
+        catch(...)
+        {
+            std::cout << "ERROR ON ~TCPSocket()" << std::endl;
+        }
     }
 
     const int raw() const
