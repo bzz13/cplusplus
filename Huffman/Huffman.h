@@ -67,6 +67,7 @@ class huffman
     std::unordered_map<char, unsigned int> counters;
     std::vector<node> nodes;
     std::unordered_map<char, std::string> translations;
+    node root;
 
     void recalculate_counters(const std::string& str)
     {
@@ -97,6 +98,8 @@ class huffman
             auto p = huffman_tree_node::join(left, right);
             q.push(p);
         }
+
+        root = q.top(); q.pop();
     }
 
     void build_translation_table()
@@ -147,7 +150,18 @@ public:
 
     std::string decode(const std::string& encodedInput)
     {
-        return "321";
+        std::stringstream result;
+        auto tmp = root;
+        for(auto c: encodedInput)
+        {
+            tmp = c == '1' ? tmp->right : tmp->left;
+            if (tmp->c != '\0')
+            {
+                result << tmp->c;
+                tmp = root;
+            }
+        }
+        return result.str();
     }
     std::string decode(const char* encodedInput)
     {
