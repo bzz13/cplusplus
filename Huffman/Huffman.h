@@ -119,7 +119,7 @@ class huffman
             std::reverse(r.begin(), r.end());
             translations[n->c] = r;
 
-            // std::cout << n->c << ": " << r << std::endl;
+            std::cout << n->c << ": " << r << std::endl;
         }
     }
 
