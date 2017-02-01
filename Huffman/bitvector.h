@@ -9,6 +9,14 @@
 #include <iostream>
 
 const int size_b = 8;
+unsigned char get_bitvector_bit_mask(int bit_index)
+{
+    if (bit_index > size_b)
+    {
+        throw std::out_of_range(std::to_string(bit_index) + " is too big. max value is " + std::to_string(size_b - 1));
+    }
+    return (unsigned char)(1 << (size_b - 1 - bit_index));
+}
 
 class bitvector;
 
@@ -29,27 +37,20 @@ class bitvector
 
     std::vector<unsigned char> values;
     unsigned int m_size;
-
-    unsigned char get_mask(int bit_index) const
-    {
-        if (bit_index > size_b)
-        {
-            throw std::out_of_range(std::to_string(bit_index) + " is too big. max value is " + std::to_string(size_b - 1));
-        }
-        return (unsigned char)((1) << (size_b - bit_index));
-    }
 public:
     bitvector();
-    bitvector(unsigned int initial_length, bool initial_value);
+    bitvector(unsigned int, bool initial_value = false);
+    bitvector(std::string);
+    bitvector(const char*);
 
     unsigned int size() const;
-    void push(bool v);
+    void push_back(bool);
 
-    const bitvector_reference operator[](unsigned int pos) const;
-          bitvector_reference operator[](unsigned int pos);
+    const bitvector_reference operator[](unsigned int) const;
+          bitvector_reference operator[](unsigned int);
 
     friend std::ostream& operator<<(std::ostream&, const bitvector_reference&);
-    friend std::ostream& operator<<(std::ostream& os, const bitvector& bv);
+    friend std::ostream& operator<<(std::ostream&, const bitvector&);
 };
 
 
@@ -62,9 +63,9 @@ bitvector_reference::bitvector_reference(bitvector* vector, unsigned int positio
 
 bitvector_reference& bitvector_reference::operator=(bool value)
 {
-    auto byte_index = m_bitvector->m_size / size_b;
-    auto bit_index = m_bitvector->m_size % size_b;
-    unsigned char mask = m_bitvector->get_mask(bit_index);
+    auto byte_index = m_position / size_b;
+    auto bit_index = m_position % size_b;
+    unsigned char mask = get_bitvector_bit_mask(bit_index);
     unsigned char current = m_bitvector->values[byte_index] & mask;
 
     if(value)
@@ -83,9 +84,9 @@ bitvector_reference& bitvector_reference::operator=(bool value)
 
 std::ostream& operator<<(std::ostream& os, const bitvector_reference& reference)
 {
-    auto byte_index = reference.m_bitvector->m_size / size_b;
-    auto bit_index = reference.m_bitvector->m_size % size_b;
-    auto mask = reference.m_bitvector->get_mask(bit_index);
+    auto byte_index = reference.m_position / size_b;
+    auto bit_index = reference.m_position % size_b;
+    auto mask = get_bitvector_bit_mask(bit_index);
     return (os << (reference.m_bitvector->values[byte_index] & mask ? true : false));
 }
 
@@ -104,8 +105,18 @@ bitvector::bitvector(unsigned int initial_length, bool initial_value)
 
     for (int i = values.size() * size_b; i < initial_length; ++i)
     {
-        push(initial_value);
+        push_back(initial_value);
     }
+}
+bitvector::bitvector(std::string str): bitvector()
+{
+    for (auto c: str)
+    {
+        push(c - '0');
+    }
+}
+bitvector::bitvector(const char* str): bitvector(std::string(str))
+{
 }
 
 unsigned int bitvector::size() const
@@ -113,7 +124,7 @@ unsigned int bitvector::size() const
     return m_size;
 }
 
-void bitvector::push(bool v)
+void bitvector::push_back(bool v)
 {
     m_size++;
     auto bit_index = m_size % size_b;
@@ -122,23 +133,23 @@ void bitvector::push(bool v)
         values.push_back(0);
     }
     auto tmp = const_cast<bitvector*>(this);
-    bitvector_reference ref(tmp, m_size);
+    bitvector_reference ref(tmp, m_size - 1);
     ref = v;
 }
 
 const bitvector_reference bitvector::operator[](unsigned int pos) const
 {
-    if (pos > m_size)
+    if (pos >= m_size)
     {
         throw std::out_of_range(std::to_string(pos) + " is too big. size() is " + std::to_string(m_size));
     }
     auto tmp = const_cast<bitvector*>(this);
-    return bitvector_reference(tmp, m_size);
+    return bitvector_reference(tmp, pos);
 }
 
 bitvector_reference bitvector::operator[](unsigned int pos)
 {
-    if (pos > m_size)
+    if (pos >= m_size)
     {
         throw std::out_of_range(std::to_string(pos) + " is too big. size() is " + std::to_string(m_size));
     }

@@ -10,17 +10,17 @@ int main()
         bitvector b(10, false);
         cout << b << endl;
         b.push(true);
-        cout << b << endl;
+        cout << b << endl << endl;
     }
     {
         bitvector b(29, true);
         cout << b << endl;
         b.push(true);
-        cout << b << endl;
+        cout << b << endl << endl;
     }
     {
-        bitvector b(3229, true);
-        cout << b << endl;
+        bitvector b(129, true);
+        cout << b << endl << endl;
     }
     {
         bitvector b;
@@ -31,7 +31,25 @@ int main()
         b[0] = true;
         cout << b[0] << endl;
         b[0] = false;
-        cout << b[0] << endl;
+        cout << b[0] << endl << endl;
+    }
+    {
+        auto str = "1001";
+        cout << str << endl;
+        bitvector b(str);
+        cout << b << endl << endl;
+    }
+    {
+        auto str = "11001101";
+        cout << str << endl;
+        bitvector b(str);
+        cout << b << endl << endl;
+    }
+    {
+        auto str = "110011010010001";
+        cout << str << endl;
+        bitvector b(str);
+        cout << b << endl << endl;
     }
     {
         bitvector b;
@@ -55,7 +73,7 @@ int main()
         b.push(false);
         cout << b << " " << b[8] << endl;
         b.push(true);
-        cout << b << " " << b[9] << endl;
+        cout << b << " " << b[9] << endl << endl;
     }
     return 0;
 }
