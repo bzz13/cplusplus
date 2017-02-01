@@ -20,15 +20,86 @@ unsigned char get_bitvector_bit_mask(int bit_index)
 
 class bitvector;
 
-class bitvector_reference
+struct bitvector_reference
 {
     unsigned int m_position;
     bitvector*   m_bitvector;
-public:
+
     bitvector_reference(bitvector*, unsigned int);
     bitvector_reference& operator=(bool);
 
+    operator bool() const;
+
     friend std::ostream& operator<<(std::ostream&, const bitvector_reference&);
+};
+
+class iterator: public bitvector_reference, public std::iterator<std::forward_iterator_tag, bool>
+{
+public:
+    iterator(bitvector* bv, unsigned int pos = 0): bitvector_reference(bv, pos) { }
+    iterator& operator++() //prefix increment
+    {
+        m_position ++;
+        return (*this);
+    }
+    iterator operator++(int) //postfix increment
+    {
+        auto tmp = *this;
+        m_position ++;
+        return iterator(tmp);
+    }
+    bitvector_reference& operator*()
+    {
+        return *((bitvector_reference*)this);
+    }
+    bool operator==(const iterator& other) const
+    {
+        return (m_bitvector == other.m_bitvector && m_position == other.m_position);
+    }
+    bool operator!=(const iterator& other) const
+    {
+        return (m_bitvector != other.m_bitvector || m_position != other.m_position);
+    }
+    operator bool() const
+    {
+        return (bool)((bitvector_reference)(*this));
+    }
+};
+
+
+class const_iterator: public bitvector_reference, public std::iterator<std::forward_iterator_tag, bool>
+{
+public:
+    const_iterator(bitvector* bv, unsigned int pos = 0): bitvector_reference(bv, pos) { }
+    // const_iterator(iterator& it): bitvector_reference( it.m_bitvector, it.m_position) { }
+
+    const_iterator& operator++() //prefix increment
+    {
+        m_position ++;
+        return (*this);
+    }
+    const_iterator operator++(int) //postfix increment
+    {
+        auto tmp = *this;
+        m_position ++;
+        return const_iterator(tmp);
+    }
+    const bitvector_reference& operator*() const
+    {
+        return *((bitvector_reference*)this);
+    }
+    bool operator==(const const_iterator& other) const
+    {
+        return (m_bitvector == other.m_bitvector && m_position == other.m_position);
+    }
+    bool operator!=(const const_iterator& other) const
+    {
+        return (m_bitvector != other.m_bitvector || m_position != other.m_position);
+    }
+    operator bool() const
+    {
+        return (bool)((bitvector_reference)(*this));
+    }
 };
 
 class bitvector
@@ -51,6 +122,26 @@ public:
 
     friend std::ostream& operator<<(std::ostream&, const bitvector_reference&);
     friend std::ostream& operator<<(std::ostream&, const bitvector&);
+
+
+    iterator begin()
+    {
+        return iterator(this, 0);
+    }
+    const_iterator begin() const
+    {
+        auto tmp = const_cast<bitvector*>(this);
+        return const_iterator(tmp, 0);
+    }
+    iterator end()
+    {
+        return iterator(this, m_size);
+    }
+    const_iterator end() const
+    {
+        auto tmp = const_cast<bitvector*>(this);
+        return const_iterator(tmp, m_size);
+    }
 };
 
 
@@ -82,12 +173,17 @@ bitvector_reference& bitvector_reference::operator=(bool value)
     return *this;
 }
 
+bitvector_reference::operator bool() const
+{
+    auto byte_index = m_position / size_b;
+    auto bit_index = m_position % size_b;
+    auto mask = get_bitvector_bit_mask(bit_index);
+    return (bool)(m_bitvector->values[byte_index] & mask);
+}
+
 std::ostream& operator<<(std::ostream& os, const bitvector_reference& reference)
 {
-    auto byte_index = reference.m_position / size_b;
-    auto bit_index = reference.m_position % size_b;
-    auto mask = get_bitvector_bit_mask(bit_index);
-    return (os << (bool)(reference.m_bitvector->values[byte_index] & mask));
+    return (os << ((bool)reference));
 }
 
 
@@ -158,10 +254,9 @@ bitvector_reference bitvector::operator[](unsigned int pos)
 
 std::ostream& operator<<(std::ostream& os, const bitvector& bv)
 {
-    os << "size: " << bv.size() << " value: ";
-    for(auto v: bv.values)
+    for(auto v: bv)
     {
-        os << std::bitset<size_b>(v) << " ";
+        os << v;
     }
-    return os;
+    return (os << " size: " << bv.size());
 }

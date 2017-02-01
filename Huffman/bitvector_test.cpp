@@ -75,5 +75,15 @@ int main()
         b.push_back(true);
         cout << b << " " << b[9] << endl << endl;
     }
+    {
+        cout << "110011010010001" << endl;
+        bitvector b("110011010010001");
+        for(auto bit: b)
+        {
+            cout << bit;
+            bit = !bit;
+        }
+        cout << endl << b << endl << endl;
+    }
     return 0;
 }
