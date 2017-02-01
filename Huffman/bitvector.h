@@ -87,7 +87,7 @@ std::ostream& operator<<(std::ostream& os, const bitvector_reference& reference)
     auto byte_index = reference.m_position / size_b;
     auto bit_index = reference.m_position % size_b;
     auto mask = get_bitvector_bit_mask(bit_index);
-    return (os << (reference.m_bitvector->values[byte_index] & mask ? true : false));
+    return (os << (bool)(reference.m_bitvector->values[byte_index] & mask));
 }
 
 
@@ -112,7 +112,7 @@ bitvector::bitvector(std::string str): bitvector()
 {
     for (auto c: str)
     {
-        push(c - '0');
+        push_back(c - '0');
     }
 }
 bitvector::bitvector(const char* str): bitvector(std::string(str))
