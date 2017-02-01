@@ -2,11 +2,12 @@
 #include <vector>
 #include <bitset>
 #include <ostream>
+#include <istream>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <memory>
 
-#include <iostream>
 
 const int size_b = 8;
 unsigned char get_bitvector_bit_mask(int bit_index)
@@ -115,13 +116,16 @@ public:
     bitvector(const char*);
 
     unsigned int size() const;
+    void clear();
     void push_back(bool);
+    void push_back(const bitvector&);
 
     const bitvector_reference operator[](unsigned int) const;
           bitvector_reference operator[](unsigned int);
 
     friend std::ostream& operator<<(std::ostream&, const bitvector_reference&);
     friend std::ostream& operator<<(std::ostream&, const bitvector&);
+    friend std::istream& operator>>(std::istream&, bitvector&);
 
 
     iterator begin()
@@ -220,6 +224,12 @@ unsigned int bitvector::size() const
     return m_size;
 }
 
+void bitvector::clear()
+{
+    m_size = 0;
+    values.clear();
+}
+
 void bitvector::push_back(bool v)
 {
     m_size++;
@@ -231,6 +241,14 @@ void bitvector::push_back(bool v)
     auto tmp = const_cast<bitvector*>(this);
     bitvector_reference ref(tmp, m_size - 1);
     ref = v;
+}
+
+void bitvector::push_back(const bitvector& other)
+{
+    for(auto v: other)
+    {
+        push_back(v);
+    }
 }
 
 const bitvector_reference bitvector::operator[](unsigned int pos) const
@@ -254,9 +272,49 @@ bitvector_reference bitvector::operator[](unsigned int pos)
 
 std::ostream& operator<<(std::ostream& os, const bitvector& bv)
 {
-    for(auto v: bv)
+    if (&os == &(std::cout))
     {
-        os << v;
+        for(auto v: bv)
+        {
+            os << v;
+        }
+        os << " size: " << bv.size();
     }
-    return (os << " size: " << bv.size());
+    else
+    {
+        os << bv.size() << " ";
+        for (auto c: bv.values)
+        {
+            os << c;
+        }
+    }
+    return os;
+}
+
+
+std::istream& operator>>(std::istream& is, bitvector& bv)
+{
+    if (&is == &(std::cin))
+    {
+       std::string s;
+       is >> s;
+       bv = bitvector(s);
+    }
+    else
+    {
+        bv.clear();
+        unsigned int size;
+        is >> size;
+        bv.m_size = size;
+
+        auto byte_size = size % size_b == 0 ? size / size_b : size / size_b + 1;
+        char c;
+        is.get(c); // space
+        for(auto i = 0; i < byte_size; ++i)
+        {
+            is.get(c);
+            bv.values.push_back(c);
+        }
+    }
+    return is;
 }

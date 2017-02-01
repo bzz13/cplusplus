@@ -1,11 +1,17 @@
 #include "Huffman.h"
 #include "bitvector.h"
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 
 int main()
 {
+    // {
+    //     bitvector b;
+    //     cin >> b;
+    //     cout << b << endl << endl;
+    // }
     {
         bitvector b(10, false);
         cout << b << endl;
@@ -84,6 +90,27 @@ int main()
             bit = !bit;
         }
         cout << endl << b << endl << endl;
+    }
+    {
+        bitvector a("110011010010001");
+        cout << a << endl;
+        bitvector b("1001");
+        cout << b << endl;
+        a.push_back(b);
+        cout << a << endl << endl;
+    }
+    {
+        bitvector a("1100110110111011");
+        ofstream fout("out.txt");
+        fout << a;
+        fout.close();
+
+        bitvector b;
+        ifstream fin("out.txt");
+        fin >> b;
+
+        cout << a << endl
+             << b << endl << endl;
     }
     return 0;
 }
