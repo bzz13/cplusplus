@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
+#include "bitvector.h"
 
 
 struct huffman_tree_node;
@@ -66,7 +67,7 @@ class huffman
 {
     std::unordered_map<char, unsigned int> counters;
     std::vector<node> nodes;
-    std::unordered_map<char, std::string> translations;
+    std::unordered_map<char, bitvector> translations;
     node root;
 
     void recalculate_counters(const std::string& str)
@@ -108,33 +109,37 @@ class huffman
         for(auto n: nodes)
         {
             // std::cout << n->to_string() << std::endl;
-            std::stringstream ss;
+            std::stack<bool> path;
             auto tmp = n;
             while(tmp->parent)
             {
-                ss << tmp->weight;
+                path.push(tmp->weight);
                 tmp = tmp->parent;
             }
-            auto r = ss.str();
-            std::reverse(r.begin(), r.end());
+            bitvector r;
+            while(!path.empty())
+            {
+                r.push_back(path.top());
+                path.pop();
+            }
             translations[n->c] = r;
 
             std::cout << n->c << ": " << r << std::endl;
         }
     }
 
-    std::string translate(const std::string& str)
+    bitvector translate(const std::string& str)
     {
-        std::stringstream result;
+        bitvector result;
         for(auto c: str)
         {
-            result << translations[c];
+            result.push_back(translations[c]);
         }
-        return result.str();
+        return result;
     }
 
 public:
-    std::string encode(const std::string& inputToEncode)
+    bitvector encode(const std::string& inputToEncode)
     {
         recalculate_counters(inputToEncode);
         build_prefix_tree();
@@ -143,18 +148,18 @@ public:
         return result;
     }
 
-    std::string encode(const char* inputToEncode)
+    bitvector encode(const char* inputToEncode)
     {
         return encode(std::string(inputToEncode));
     }
 
-    std::string decode(const std::string& encodedInput)
+    std::string decode(const bitvector& encodedInput)
     {
         std::stringstream result;
         auto tmp = root;
-        for(auto c: encodedInput)
+        for(auto b: encodedInput)
         {
-            tmp = c == '1' ? tmp->right : tmp->left;
+            tmp = b ? tmp->right : tmp->left;
             if (tmp->c != '\0')
             {
                 result << tmp->c;
@@ -163,8 +168,13 @@ public:
         }
         return result.str();
     }
+
+    std::string decode(const std::string& encodedInput)
+    {
+        return decode(bitvector(encodedInput));
+    }
     std::string decode(const char* encodedInput)
     {
-        return decode(std::string(encodedInput));
+        return decode(bitvector(encodedInput));
     }
 };
