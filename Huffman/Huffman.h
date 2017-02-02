@@ -12,7 +12,6 @@
 
 
 struct huffman_tree_node;
-
 typedef std::shared_ptr<huffman_tree_node> node;
 
 struct huffman_tree_node
@@ -165,6 +164,10 @@ public:
                 result << tmp->c;
                 tmp = root;
             }
+        }
+        if (tmp != root)
+        {
+            throw std::invalid_argument("inconsistent state, wrong input");
         }
         return result.str();
     }
