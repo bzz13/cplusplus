@@ -18,18 +18,18 @@ int main()
     }
 
     {
-        auto enoded = h.encode("aaaaaaaaaaaaaaabbbbbbbccccccddddddeeeee");
-        auto decoded = h.decode(enoded);
-        cout << enoded << endl
+        auto encoded = h.encode("aaaaaaaaaaaaaaabbbbbbbccccccddddddeeeee");
+        auto decoded = h.decode(encoded);
+        cout << encoded << endl
              << decoded << " size: " << decoded.size() * 8 << endl << endl;
     }
 
     {
         char buffer_in[] = {'a', 'a', '\0', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a'};
         char buffer_out[1024];
-        auto enoded = h.encode(buffer_in, 15);
-        auto decodedSize = h.decode(enoded, buffer_out, 100);
-        cout << enoded << endl;
+        auto encoded = h.encode(buffer_in, 15);
+        auto decodedSize = h.decode(encoded, buffer_out, 100);
+        cout << encoded << endl;
         for(auto i = 0; i < decodedSize; i++)
         {
             if (buffer_out[i] == '\0')
@@ -42,9 +42,9 @@ int main()
     {
         char buffer_in[] = {'a', 'a', '\0', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a'};
         char buffer_out[1024];
-        auto enoded = h.encode(buffer_in, 15);
-        auto decodedSize = h.decode(enoded, buffer_out, 5);
-        cout << enoded << endl;
+        auto encoded = h.encode(buffer_in, 15);
+        auto decodedSize = h.decode(encoded, buffer_out, 5);
+        cout << encoded << endl;
         for(auto i = 0; i < decodedSize; i++)
         {
             if (buffer_out[i] == '\0')
@@ -56,25 +56,25 @@ int main()
 
     {
         string input("aaaaaaaaaaaaaaabbbbbbbccccccddddddeeeee");
-        auto enoded = h.encode(input);
+        auto encoded = h.encode(input);
         auto table  = h.get_translation_table();
         for(auto p: table)
         {
             cout << p.first << ": " << p.second << endl;
         }
 
-        cout << enoded << endl
+        cout << encoded << endl
              << input << " size: " << input.size() * 8 << endl;
 
         huffman other;
         other.set_translation_table(table);
-        auto decoded = other.decode(enoded);
+        auto decoded = other.decode(encoded);
         cout << decoded << " size: " << decoded.size() * 8 << endl << endl;
     }
 
     {
         string input("aaaaaaaaaaaaaaabbbbbbbccccccddddddeeeee");
-        auto enoded = h.encode(input);
+        auto encoded = h.encode(input);
 
         ofstream fout("table.txt");
         h.store_translateion_table_to_ostream(fout);
@@ -101,11 +101,11 @@ int main()
         }
         cout << endl;
 
-        cout << enoded << endl
+        cout << encoded << endl
              << "initial to encode:  "
              << input << " size: " << input.size() * 8 << endl;
 
-        auto decoded = other.decode(enoded);
+        auto decoded = other.decode(encoded);
         cout << "decoded with other: "
              << decoded << " size: " << decoded.size() * 8 << endl;
     }
