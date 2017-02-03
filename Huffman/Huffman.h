@@ -8,60 +8,8 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
+#include "huffman_tree_node.h"
 #include "bitvector.h"
-
-
-struct huffman_tree_node;
-typedef std::shared_ptr<huffman_tree_node> node;
-
-struct huffman_tree_node
-{
-    char c;
-    size_t count;
-    bool weight;
-    bool terminated;
-    node parent;
-    node left;
-    node right;
-
-    huffman_tree_node(char _c, size_t _i, bool _term, node _l = nullptr, node _r = nullptr, node _p = nullptr)
-        : c(_c), count(_i), terminated(_term), parent(_p), left(_l), right(_r) { }
-
-    std::string to_string()
-    {
-        std::stringstream ss;
-        ss << this << "{" << c << ":" << count;
-        if (parent)
-            ss << "--" << weight << "--> " << parent->to_string();
-        ss << "}";
-        return ss.str();
-    }
-
-    static node join(node left, node right)
-    {
-        auto parent = std::make_shared<huffman_tree_node>('\0', left->count + right->count, false, left, right);
-        left->parent = parent;
-        left->weight = false;
-        right->parent = parent;
-        right->weight = true;
-        return parent;
-    }
-};
-
-class node_comparison
-{
-    bool reverse;
-public:
-    node_comparison(const bool& revparam=false)
-        : reverse(revparam){ }
-
-    bool operator() (const node& lhs, const node& rhs) const
-    {
-        return reverse
-            ? (lhs->count > rhs->count)
-            : (lhs->count < rhs->count);
-    }
-};
 
 class huffman
 {

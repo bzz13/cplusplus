@@ -1,4 +1,4 @@
-#include "Huffman.h"
+#include "huffman.h"
 #include "bitvector.h"
 #include <iostream>
 
