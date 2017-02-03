@@ -13,6 +13,7 @@
 
 class huffman
 {
+    bool init = false;
     std::unordered_map<char, bitvector> translations;
     node root;
 

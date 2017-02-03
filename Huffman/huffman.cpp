@@ -69,6 +69,7 @@ bitvector huffman::translate(const char* buffer, size_t size)
 bitvector huffman::encode(const char* buffer, size_t size)
 {
     translations = build_translation_table(build_prefix_tree(recalculate_counters(buffer, size)));
+    init = true;
     return translate(buffer, size);
 }
 
@@ -127,6 +128,10 @@ std::string huffman::decode(const bitvector& encodedInput)
 
 const std::unordered_map<char, bitvector>& huffman::get_translation_table() const
 {
+    if (!init)
+    {
+        throw std::logic_error("translation table not init yet");
+    }
     return translations;
 }
 void huffman::set_translation_table(const std::unordered_map<char, bitvector>& table)
@@ -157,6 +162,7 @@ void huffman::set_translation_table(const std::unordered_map<char, bitvector>& t
         tmp->c = p.first;
         tmp->terminated = true;
     }
+    init = true;
 }
 
 void huffman::store_translateion_table_to_ostream(std::ostream& os) const
