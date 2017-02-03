@@ -92,7 +92,7 @@ int main()
         ifstream fin("table.txt");
         other.load_translateion_table_from_istream(fin);
         fin.close();
-             table = h.get_translation_table();
+             table = other.get_translation_table();
 
         cout << "table loaded from table.txt" << endl;
         for(auto p: table)
