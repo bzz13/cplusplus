@@ -6,7 +6,6 @@
 #include <vector>
 #include <stack>
 #include <iostream>
-#include <fstream>
 #include <memory>
 #include <algorithm>
 #include "huffman_tree_node.h"
