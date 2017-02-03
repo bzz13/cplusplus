@@ -1,19 +1,18 @@
 #include "huffman.h"
 
-void huffman::recalculate_counters(const char* buffer, size_t size)
+std::unordered_map<char, size_t> huffman::recalculate_counters(const char* buffer, size_t size)
 {
-    counters.clear();
+    std::unordered_map<char, size_t> counters;
     for(size_t i = 0; i < size; ++i)
     {
         counters[buffer[i]]++;
     }
-    // for(auto p: counters)
-    //      std::cout << p.first << "=" << p.second << std::endl;
+    return counters;
 }
 
-void huffman::build_prefix_tree()
+std::vector<node> huffman::build_prefix_tree(const std::unordered_map<char, size_t>& counters)
 {
-    nodes.clear();
+    std::vector<node> nodes;
     for(auto p: counters)
     {
         nodes.push_back(std::make_shared<huffman_tree_node>(p.first, p.second, true));
@@ -31,14 +30,14 @@ void huffman::build_prefix_tree()
     }
 
     root = q.top(); q.pop();
+    return nodes;
 }
 
-void huffman::build_translation_table()
+std::unordered_map<char, bitvector> huffman::build_translation_table(const std::vector<node>& nodes)
 {
-    translations.clear();
+    std::unordered_map<char, bitvector> table;
     for(auto n: nodes)
     {
-        // std::cout << n->to_string() << std::endl;
         std::stack<bool> path;
         auto tmp = n;
         while(tmp->parent)
@@ -46,19 +45,15 @@ void huffman::build_translation_table()
             path.push(tmp->weight);
             tmp = tmp->parent;
         }
-        bitvector r;
+        bitvector result;
         while(!path.empty())
         {
-            r.push_back(path.top());
+            result.push_back(path.top());
             path.pop();
         }
-        translations[n->c] = r;
-
-        if (n->c == '\0')
-            std::cout << "\\0: " << r << std::endl;
-        else
-            std::cout << n->c << ": " << r << std::endl;
+        table[n->c] = result;
     }
+    return table;
 }
 
 bitvector huffman::translate(const char* buffer, size_t size)
@@ -73,9 +68,7 @@ bitvector huffman::translate(const char* buffer, size_t size)
 
 bitvector huffman::encode(const char* buffer, size_t size)
 {
-    recalculate_counters(buffer, size);
-    build_prefix_tree();
-    build_translation_table();
+    translations = build_translation_table(build_prefix_tree(recalculate_counters(buffer, size)));
     return translate(buffer, size);
 }
 
@@ -130,4 +123,63 @@ std::string huffman::decode(const bitvector& encodedInput)
     }
 
     return result.str();
+}
+
+const std::unordered_map<char, bitvector>& huffman::get_translation_table() const
+{
+    return translations;
+}
+void huffman::set_translation_table(const std::unordered_map<char, bitvector>& table)
+{
+    root = std::make_shared<huffman_tree_node>('\0', 0, false);
+    for(auto p: table)
+    {
+        auto tmp = root;
+        for(auto bit: p.second)
+        {
+            if (bit)
+            {
+                if(!(tmp->right))
+                {
+                    tmp->right = std::make_shared<huffman_tree_node>('\0', 0, false);
+                }
+                tmp = tmp->right;
+            }
+            else
+            {
+                if(!(tmp->left))
+                {
+                    tmp->left = std::make_shared<huffman_tree_node>('\0', 0, false);
+                }
+                tmp = tmp->left;
+            }
+        }
+        tmp->c = p.first;
+        tmp->terminated = true;
+    }
+}
+
+void huffman::store_translateion_table_to_ostream(std::ostream& os) const
+{
+    for(auto p: translations)
+    {
+        os << p.first << " " << p.second << std::endl;
+    }
+}
+
+void huffman::load_translateion_table_from_istream(std::istream& is)
+{
+    std::unordered_map<char, bitvector> table;
+    while(!is.eof())
+    {
+        char c;
+        is.get(c);
+        if (is.eof())
+        {
+            break;
+        }
+        is >> table[c];
+        is.get(c); // endl
+    }
+    set_translation_table(table);
 }

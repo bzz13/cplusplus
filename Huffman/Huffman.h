@@ -6,6 +6,7 @@
 #include <vector>
 #include <stack>
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <algorithm>
 #include "huffman_tree_node.h"
@@ -13,14 +14,12 @@
 
 class huffman
 {
-    std::unordered_map<char, size_t> counters;
-    std::vector<node> nodes;
     std::unordered_map<char, bitvector> translations;
     node root;
 
-    void recalculate_counters(const char* buffer, size_t size);
-    void build_prefix_tree();
-    void build_translation_table();
+    std::unordered_map<char, size_t> recalculate_counters(const char* buffer, size_t size);
+    std::vector<node> build_prefix_tree(const std::unordered_map<char, size_t>& counters);
+    std::unordered_map<char, bitvector> build_translation_table(const std::vector<node>& nodes);
     bitvector translate(const char* buffer, size_t size);
 
 public:
@@ -29,4 +28,10 @@ public:
 
     size_t decode(const bitvector& encodedInput, char* outbuffer, size_t size);
     std::string decode(const bitvector& encodedInput);
+
+    const std::unordered_map<char, bitvector>& get_translation_table() const;
+    void set_translation_table(const std::unordered_map<char, bitvector>& table);
+
+    void store_translateion_table_to_ostream(std::ostream& os) const;
+    void load_translateion_table_from_istream(std::istream& is);
 };
