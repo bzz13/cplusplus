@@ -9,14 +9,49 @@ int main()
 
     huffman h;
 
-    auto en1 = h.encode("adssadasdaaaaasssdaaasd");
-    auto de1 = h.decode(en1);
-    cout << en1 << endl << de1 << " size: " << de1.size() * 8 << endl << endl;
+    {
+        auto encoded = h.encode("adssadasdaaaaasssdaaasd");
+        auto decoded = h.decode(encoded);
+        cout << encoded << endl << decoded << " size: " << decoded.size() * 8 << endl << endl;
+    }
 
-    auto en2 = h.encode("aaaaaaaaaaaaaaabbbbbbbccccccddddddeeeee");
-    auto de2 = h.decode(en2);
-    cout << en2 << endl
-         << de2 << " size: " << de2.size() * 8 << endl;
+    {
+        auto enoded = h.encode("aaaaaaaaaaaaaaabbbbbbbccccccddddddeeeee");
+        auto decoded = h.decode(enoded);
+        cout << enoded << endl
+             << decoded << " size: " << decoded.size() * 8 << endl << endl;
+    }
+
+    {
+        char buffer_in[] = {'a', 'a', '\0', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a'};
+        char buffer_out[1024];
+        auto enoded = h.encode(buffer_in, 15);
+        auto decodedSize = h.decode(enoded, buffer_out, 100);
+        cout << enoded << endl;
+        for(auto i = 0; i < decodedSize; i++)
+        {
+            if (buffer_out[i] == '\0')
+                cout << "\\0";
+            cout << buffer_out[i];
+        }
+        cout << " size: " << decodedSize * 8 << endl << endl;
+    }
+
+    {
+        char buffer_in[] = {'a', 'a', '\0', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a', 'b', 'c', 'a', 'b', '\0', '\0', 'a', 'a', 'b', 'a', 'a', 'a'};
+        char buffer_out[1024];
+        auto enoded = h.encode(buffer_in, 15);
+        auto decodedSize = h.decode(enoded, buffer_out, 5);
+        cout << enoded << endl;
+        for(auto i = 0; i < decodedSize; i++)
+        {
+            if (buffer_out[i] == '\0')
+                cout << "\\0";
+            cout << buffer_out[i];
+        }
+        cout << " size: " << decodedSize * 8 << endl << endl;
+    }
+
     return 0;
 }
 
@@ -35,5 +70,19 @@ c: 110 size: 3
 d: 101 size: 3
 000000000000000111111111111111111111110110110110110110101101101101101101100100100100100 size: 87
 aaaaaaaaaaaaaaabbbbbbbccccccddddddeeeee size: 312
+
+b: 00 size: 2
+c: 010 size: 3
+\0: 011 size: 3
+a: 1 size: 1
+11011000101000110111100111 size: 26
+aa\0bcab\0\0aabaaa size: 120
+
+b: 00 size: 2
+c: 010 size: 3
+\0: 011 size: 3
+a: 1 size: 1
+11011000101000110111100111 size: 26
+aa\0bc size: 40
 
 */

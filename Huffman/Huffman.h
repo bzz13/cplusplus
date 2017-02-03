@@ -17,14 +17,15 @@ typedef std::shared_ptr<huffman_tree_node> node;
 struct huffman_tree_node
 {
     char c;
-    unsigned int count;
+    size_t count;
     bool weight;
+    bool terminated;
     node parent;
     node left;
     node right;
 
-    huffman_tree_node(char _c, unsigned int _i, node _l = nullptr, node _r = nullptr, node _p = nullptr)
-        : c(_c), count(_i), parent(_p), left(_l), right(_r) { }
+    huffman_tree_node(char _c, size_t _i, bool _term, node _l = nullptr, node _r = nullptr, node _p = nullptr)
+        : c(_c), count(_i), terminated(_term), parent(_p), left(_l), right(_r) { }
 
     std::string to_string()
     {
@@ -38,7 +39,7 @@ struct huffman_tree_node
 
     static node join(node left, node right)
     {
-        auto parent = std::make_shared<huffman_tree_node>('\0', left->count + right->count, left, right);
+        auto parent = std::make_shared<huffman_tree_node>('\0', left->count + right->count, false, left, right);
         left->parent = parent;
         left->weight = false;
         right->parent = parent;
@@ -64,17 +65,17 @@ public:
 
 class huffman
 {
-    std::unordered_map<char, unsigned int> counters;
+    std::unordered_map<char, size_t> counters;
     std::vector<node> nodes;
     std::unordered_map<char, bitvector> translations;
     node root;
 
-    void recalculate_counters(const std::string& str)
+    void recalculate_counters(const char* buffer, size_t size)
     {
         counters.clear();
-        for(auto c: str)
+        for(size_t i = 0; i < size; ++i)
         {
-            counters[c]++;
+            counters[buffer[i]]++;
         }
         // for(auto p: counters)
         //      std::cout << p.first << "=" << p.second << std::endl;
@@ -85,7 +86,7 @@ class huffman
         nodes.clear();
         for(auto p: counters)
         {
-            nodes.push_back(std::make_shared<huffman_tree_node>(p.first, p.second));
+            nodes.push_back(std::make_shared<huffman_tree_node>(p.first, p.second, true));
         }
 
         std::priority_queue<node, std::vector<node>, node_comparison> 
@@ -123,28 +124,35 @@ class huffman
             }
             translations[n->c] = r;
 
-            std::cout << n->c << ": " << r << std::endl;
+            if (n->c == '\0')
+                std::cout << "\\0: " << r << std::endl;
+            else
+                std::cout << n->c << ": " << r << std::endl;
         }
     }
 
-    bitvector translate(const std::string& str)
+    bitvector translate(const char* buffer, size_t size)
     {
         bitvector result;
-        for(auto c: str)
+        for(size_t i = 0; i < size; ++i)
         {
-            result.push_back(translations[c]);
+            result.push_back(translations[buffer[i]]);
         }
         return result;
     }
 
 public:
-    bitvector encode(const std::string& inputToEncode)
+    bitvector encode(const char* buffer, size_t size)
     {
-        recalculate_counters(inputToEncode);
+        recalculate_counters(buffer, size);
         build_prefix_tree();
         build_translation_table();
-        auto result = translate(inputToEncode);
-        return result;
+        return translate(buffer, size);
+    }
+
+    bitvector encode(const std::string& inputToEncode)
+    {
+        return encode(inputToEncode.c_str(), inputToEncode.size());
     }
 
     bitvector encode(const char* inputToEncode)
@@ -152,14 +160,41 @@ public:
         return encode(std::string(inputToEncode));
     }
 
+    size_t decode(const bitvector& encodedInput, char* outbuffer, size_t size)
+    {
+        size_t decodedCount = 0;
+        auto tmp = root;
+
+        for(auto b: encodedInput)
+        {
+            tmp = b ? tmp->right : tmp->left;
+            if (tmp->terminated)
+            {
+                outbuffer[decodedCount] = tmp->c;
+                tmp = root;
+                decodedCount++;
+                if (decodedCount == size)
+                {
+                    break;
+                }
+            }
+        }
+        if (tmp != root)
+        {
+            throw std::invalid_argument("inconsistent state, wrong input");
+        }
+        return decodedCount;
+    }
+
     std::string decode(const bitvector& encodedInput)
     {
         std::stringstream result;
+
         auto tmp = root;
         for(auto b: encodedInput)
         {
             tmp = b ? tmp->right : tmp->left;
-            if (tmp->c != '\0')
+            if (tmp->terminated)
             {
                 result << tmp->c;
                 tmp = root;
@@ -169,15 +204,7 @@ public:
         {
             throw std::invalid_argument("inconsistent state, wrong input");
         }
-        return result.str();
-    }
 
-    std::string decode(const std::string& encodedInput)
-    {
-        return decode(bitvector(encodedInput));
-    }
-    std::string decode(const char* encodedInput)
-    {
-        return decode(bitvector(encodedInput));
+        return result.str();
     }
 };
