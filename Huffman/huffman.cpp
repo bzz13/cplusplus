@@ -167,6 +167,7 @@ void huffman::set_translation_table(const std::unordered_map<char, bitvector>& t
 
 void huffman::store_translateion_table_to_ostream(std::ostream& os) const
 {
+    os << translations.size() << std::endl;
     for(auto p: translations)
     {
         os << p.first << " " << p.second << std::endl;
@@ -175,10 +176,13 @@ void huffman::store_translateion_table_to_ostream(std::ostream& os) const
 
 void huffman::load_translateion_table_from_istream(std::istream& is)
 {
+    char c;
+    size_t size, count = 0;
+    is >> size;
+    is.get(c); // endl
     std::unordered_map<char, bitvector> table;
-    while(!is.eof())
+    while(!is.eof() && count < size)
     {
-        char c;
         is.get(c);
         if (is.eof())
         {
@@ -186,6 +190,7 @@ void huffman::load_translateion_table_from_istream(std::istream& is)
         }
         is >> table[c];
         is.get(c); // endl
+        count++;
     }
     set_translation_table(table);
 }
