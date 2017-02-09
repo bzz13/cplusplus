@@ -50,9 +50,17 @@ public:
 
     void put(const TKey& key, const TValue& value)
     {
-        if (m_map.size() >= m_max_size)
+        auto find = m_map.find(key);
+        if (find != m_map.end())
         {
-            remove_oldest();
+            m_list.erase(find->second.position);
+        }
+        else
+        {
+            if (m_map.size() >= m_max_size)
+            {
+                remove_oldest();
+            }
         }
         set(key, value);
     }
@@ -79,41 +87,77 @@ public:
             }
         }
     }
+
+    // void printState()
+    // {
+    //     cout << "list: ";
+    //     for(auto l: m_list)
+    //     {
+    //         cout << l << " ";
+    //     }
+    //     cout << endl
+    //          << "map: " << endl;
+    //     for(auto p: m_map)
+    //     {
+    //         cout << p.first << " {" << p.second.value << ", " << p.second.last_update << ", " << *(p.second.position) << "}" << endl;
+    //     }
+    // }
 };
 
-int main()
-{
-    LRUCache<int, int> cache(100, 2);
-    cache.put(1, 1);
-    cache.put(2, 2);
-    cache.put(3, 3);
 
+void print(LRUCache<int, int>& cache)
+{
     int result;
     if (cache.get(1, result))
     {
-        cout << result << endl;
+        cout << result << " ";
     }
     if (cache.get(2, result))
     {
-        cout << result << endl;
+        cout << result << " ";
     }
     if (cache.get(3, result))
     {
-        cout << result << endl;
+        cout << result << " ";
     }
+    cout << endl;
+    // cache.printState();
+    // cout << endl;
+}
 
+void T1()
+{
+    LRUCache<int, int> cache(100, 2);
     cache.put(1, 1);
-    if (cache.get(1, result))
-    {
-        cout << result << endl;
-    }
-    if (cache.get(2, result))
-    {
-        cout << result << endl;
-    }
-    if (cache.get(3, result))
-    {
-        cout << result << endl;
-    }
+    // cache.printState();
+    cache.put(2, 2);
+    print(cache); // 1 2
+    // cache.printState();
+    cache.put(3, 3); // drop "1"
+    print(cache); // 2 3
+
+    cache.put(1, 1); // drop "2"
+    print(cache); // 1 3
+    cout << endl;
+}
+
+void T2()
+{
+    LRUCache<int, int> cache(100, 2);
+    cache.put(1, 1); // 
+    cache.put(1, 2); // update by key 1 -> 2
+    cache.put(1, 20); // update by key 2 -> 20
+    print(cache); // 20
+    cache.put(2, 3);
+    print(cache); // 20 3
+    cache.put(3, 4); // drop 1
+    print(cache); // 3 4
+    cout << endl;
+}
+
+int main()
+{
+    T1();
+    T2();
     return 0;
 }
