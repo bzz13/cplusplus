@@ -37,6 +37,11 @@ class LRUCache
             m_list.erase(begin);
         }
     }
+    void set(const TKey& key, const TValue& value)
+    {
+        m_list.push_back(key);
+        m_map[key] = LRURecord{value, now(), -- (m_list.end())};
+    }
 public:
 
     LRUCache(int ttl, size_t max_size): m_ttl(ttl), m_max_size(max_size)
@@ -49,10 +54,7 @@ public:
         {
             remove_oldest();
         }
-
-        m_list.push_back(key);
-        m_map[key] = LRURecord{value, now(), -- (m_list.end())};
-        
+        set(key, value);
     }
     bool get(const TKey& key, TValue& value)
     {
@@ -72,8 +74,7 @@ public:
             else
             {
                 value = find->second.value;
-                m_list.push_back(key);
-                m_map[key] = LRURecord{value, now(), --(m_list.end())};
+                set(key, value);
                 return true;
             }
         }
@@ -88,6 +89,20 @@ int main()
     cache.put(3, 3);
 
     int result;
+    if (cache.get(1, result))
+    {
+        cout << result << endl;
+    }
+    if (cache.get(2, result))
+    {
+        cout << result << endl;
+    }
+    if (cache.get(3, result))
+    {
+        cout << result << endl;
+    }
+
+    cache.put(1, 1);
     if (cache.get(1, result))
     {
         cout << result << endl;
