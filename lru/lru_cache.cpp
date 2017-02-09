@@ -3,6 +3,8 @@
 #include <vector>
 #include <list>
 #include <time.h>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -88,26 +90,27 @@ public:
         }
     }
 
-    // void printState()
-    // {
-    //     cout << "list: ";
-    //     for(auto l: m_list)
-    //     {
-    //         cout << l << " ";
-    //     }
-    //     cout << endl
-    //          << "map: " << endl;
-    //     for(auto p: m_map)
-    //     {
-    //         cout << p.first << " {" << p.second.value << ", " << p.second.last_update << ", " << *(p.second.position) << "}" << endl;
-    //     }
-    // }
+    void printState()
+    {
+        cout << "list: ";
+        for(auto l: m_list)
+        {
+            cout << l << " ";
+        }
+        cout << endl
+             << "map: " << endl;
+        for(auto p: m_map)
+        {
+            cout << p.first << " {" << p.second.value << ", " << p.second.last_update << ", " << *(p.second.position) << "}" << endl;
+        }
+    }
 };
 
 
 void print(LRUCache<int, int>& cache)
 {
     int result;
+    cout <<"\"";
     if (cache.get(1, result))
     {
         cout << result << " ";
@@ -120,7 +123,7 @@ void print(LRUCache<int, int>& cache)
     {
         cout << result << " ";
     }
-    cout << endl;
+    cout << "\"" << endl;
     // cache.printState();
     // cout << endl;
 }
@@ -135,7 +138,6 @@ void T1()
     // cache.printState();
     cache.put(3, 3); // drop "1"
     print(cache); // 2 3
-
     cache.put(1, 1); // drop "2"
     print(cache); // 1 3
     cout << endl;
@@ -155,9 +157,24 @@ void T2()
     cout << endl;
 }
 
+void T3()
+{
+    using namespace std::chrono_literals;
+    LRUCache<int, int> cache(5, 2);
+    cache.put(1, 1);
+    this_thread::sleep_for(3s);
+    cache.put(2, 2);
+    this_thread::sleep_for(3s);
+    print(cache); // 2
+    this_thread::sleep_for(7s);
+    print(cache); // empty
+    cout << endl;
+}
+
 int main()
 {
     T1();
     T2();
+    T3();
     return 0;
 }
