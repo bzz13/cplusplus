@@ -1,41 +1,41 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include <list>
 #include <time.h>
 
 using namespace std;
 
 template<typename TKey, typename TValue>
-class LRUCache 
+class LRUCache
 {
+    typedef long long second;
+    typedef typename std::list<TKey>::iterator TKeyPos;
 
     struct LRURecord
     {
         TValue value;
-        long long last_update;
+        second last_update;
+        TKeyPos position;
     };
 
     int m_ttl;
     size_t m_max_size;
+    list<TKey> m_list;
     unordered_map<TKey, LRURecord> m_map;
 
-    long long now()
+    second now()
     {
-        return (long long) time(0);
+        return (second) time(0);
     }
     void remove_oldest()
     {
-        long long min_last_update;
-        TKey min_key;
-        for(auto p: m_map)
+        auto begin = m_list.begin();
+        if(begin != m_list.end())
         {
-            if (p.second.last_update <= min_last_update)
-            {
-                min_last_update = p.second.last_update;
-                min_key = p.first;
-            }
+            m_map.erase(*begin);
+            m_list.erase(begin);
         }
-        m_map.erase(min_key);
     }
 public:
 
@@ -49,7 +49,10 @@ public:
         {
             remove_oldest();
         }
-        m_map[key] = LRURecord{value, now()};
+
+        m_list.push_back(key);
+        m_map[key] = LRURecord{value, now(), -- (m_list.end())};
+        
     }
     bool get(const TKey& key, TValue& value)
     {
@@ -60,6 +63,7 @@ public:
         }
         else
         {
+            m_list.erase(find->second.position);
             if (find->second.last_update < now() - m_ttl)
             {
                 m_map.erase(find);
@@ -68,7 +72,8 @@ public:
             else
             {
                 value = find->second.value;
-                m_map[key].last_update = now();
+                m_list.push_back(key);
+                m_map[key] = LRURecord{value, now(), --(m_list.end())};
                 return true;
             }
         }
