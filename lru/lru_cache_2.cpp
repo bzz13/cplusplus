@@ -103,43 +103,43 @@ class LRUCache2
         shared_ptr<ListNode> node;
     };
 
-    size_t m_max_size;
-    unordered_map<TKey, LRUCache2Record> m_map;
-    List m_list;
+    size_t max_size;
+    unordered_map<TKey, LRUCache2Record> map;
+    List list;
 public:
-    LRUCache2(size_t max_size): m_max_size(max_size)
+    LRUCache2(size_t msize): max_size(msize)
     {}
 
     void put(const TKey& key, const TValue& value)
     {
-        auto find = m_map.find(key);
-        if(find != m_map.end())
+        auto find = map.find(key);
+        if(find != map.end())
         {
             find->second.value = value;
-            m_list.move_back(find->second.node);
+            list.move_back(find->second.node);
         }
         else
         {
-            if(m_map.size() >= m_max_size)
+            if(map.size() >= max_size)
             {
-                auto head = m_list.head;
-                m_map.erase(head->key);
-                m_list.cut(head);
+                auto head = list.head;
+                map.erase(head->key);
+                list.cut(head);
             }
-            m_map[key] = LRUCache2Record {value, m_list.put_back(key)};
+            map[key] = LRUCache2Record {value, list.put_back(key)};
         }
     }
     bool get(const TKey& key, TValue& value)
     {
-        auto find = m_map.find(key);
-        if(find == m_map.end())
+        auto find = map.find(key);
+        if(find == map.end())
         {
             return false;
         }
         else
         {
             value = find->second.value;
-            m_list.move_back(find->second.node);
+            list.move_back(find->second.node);
             return true;
         }
     }
@@ -147,14 +147,14 @@ public:
     void printState()
     {
         cout << "list: " << endl;
-        auto h = m_list.head;
+        auto h = list.head;
         while(h)
         {
             cout << "{" << h->prev << " <- " << h->key << " -> " << h->next << "}" << endl;
             h = h->next;
         }
         cout << "map: " << endl;
-        for(auto p: m_map)
+        for(auto p: map)
         {
             cout << p.first << " {" << p.second.value << ", " << &p.second.node << "}" << endl;
         }
