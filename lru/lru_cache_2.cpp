@@ -89,6 +89,12 @@ class LRUCache2
             node->prev = nullptr;
             node->next = nullptr;
         }
+
+        void move_back(shared_ptr<ListNode>& node)
+        {
+            cut(node);
+            put_back(node);
+        }
     };
 
     struct LRUCache2Record
@@ -109,9 +115,8 @@ public:
         auto find = m_map.find(key);
         if(find != m_map.end())
         {
-            m_list.cut(find->second.node);
-            m_list.put_back(find->second.node);
             find->second.value = value;
+            m_list.move_back(find->second.node);
         }
         else
         {
@@ -121,8 +126,7 @@ public:
                 m_map.erase(head->key);
                 m_list.cut(head);
             }
-            auto node = m_list.put_back(key);
-            m_map[key] = LRUCache2Record {value, node};
+            m_map[key] = LRUCache2Record {value, m_list.put_back(key)};
         }
     }
     bool get(const TKey& key, TValue& value)
@@ -135,8 +139,7 @@ public:
         else
         {
             value = find->second.value;
-            m_list.cut(find->second.node);
-            m_list.put_back(find->second.node);
+            m_list.move_back(find->second.node);
             return true;
         }
     }
