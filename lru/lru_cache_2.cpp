@@ -43,6 +43,8 @@ class LRUCache2
             {
                 head = node;
                 tail = node;
+                node->prev = nullptr;
+                node->next = nullptr;
             }
             else
             {
@@ -68,10 +70,7 @@ class LRUCache2
                 else
                 {
                     head = head->next;
-                    if (head)
-                    {
-                        head->prev = nullptr;
-                    }
+                    head->prev = nullptr;
                 }
             }
             else
@@ -79,10 +78,7 @@ class LRUCache2
                 if (node == tail)
                 {
                     tail = tail->prev;
-                    if (tail)
-                    {
-                        tail->next = nullptr;
-                    }
+                    tail->next = nullptr;
                 }
                 else
                 {
