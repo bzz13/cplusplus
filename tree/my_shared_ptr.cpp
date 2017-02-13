@@ -63,14 +63,18 @@ public:
     T& operator*()
     {
         if(!(*this))
+        {
             throw std::logic_error("ptr was released");
+        }
         return *data;
     }
 
     T* operator->()
     {
         if(!(*this))
+        {
             throw std::logic_error("ptr was released");
+        }
         return data;
     }
 
