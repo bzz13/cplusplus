@@ -1,8 +1,11 @@
 #include <iostream>
+#include <fstream>
 #include <unordered_map>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
+#include <time.h>
 
 using namespace std;
 
@@ -121,7 +124,7 @@ public:
         {
             _freeze(p.second.second.get(), p);
         }
-        print_node(root.get(), "");
+        // print_node(root.get(), "");
         is_freezed = true;
     }
 
@@ -156,7 +159,7 @@ public:
 
 
 
-int t1()
+void t1()
 {
     trie t;
     cout << (t.find("qwe") == false) << endl;
@@ -172,7 +175,7 @@ int t1()
 }
 
 
-int t2()
+void t2()
 {
     trie_str t;
     t.insert("qwe");
@@ -191,7 +194,72 @@ int t2()
     cout << (t.find("abcd") == false) << endl;
 }
 
+vector<string> prepare()
+{
+    vector<string> v;
+    // ifstream fin("20k.txt");
+    ifstream fin("words.txt");
+    while(!fin.eof())
+    {
+        string str;
+        fin >> str;
+        v.push_back(str);
+    }
+    fin.close();
+    return v;
+}
+
+void t3(const std::vector<string>& v)
+{
+    cout << "char trie" << endl;
+    trie t;
+    clock_t tStart = clock();
+    for(auto s: v)
+    {
+        t.insert(s);
+    }
+    printf("Time taken to insert: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
+
+    tStart = clock();
+    for(auto s: v)
+    {
+        if(!t.find(s))
+        {
+            cout << "FUCK: " << s << endl;
+        }
+    }
+    printf("Time taken to find: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
+}
+
+void t4(const std::vector<string>& v)
+{
+    cout << "string trie" << endl;
+    trie_str t;
+    clock_t tStart = clock();
+    for(auto s: v)
+    {
+        t.insert(s);
+    }
+    printf("Time taken to insert: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
+
+    tStart = clock();
+    t.freeze();
+    printf("Time taken to freeze: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
+
+    tStart = clock();
+    for(auto s: v)
+    {
+        if(!t.find(s))
+        {
+            cout << "FUCK: " << s << endl;
+        }
+    }
+    printf("Time taken to find: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
+}
+
 int main()
 {
-    t2();
+    std::vector<string> words = prepare();
+    t3(words);
+    t4(words);
 }

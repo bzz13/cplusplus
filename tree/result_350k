@@ -1,0 +1,48 @@
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+char trie
+Time taken to insert: 1.69s
+Time taken to find: 0.81s
+string trie
+Time taken to insert: 1.97s
+Time taken to freeze: 0.67s
+Time taken to find: 0.50s
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+char trie
+Time taken to insert: 1.70s
+Time taken to find: 0.80s
+string trie
+Time taken to insert: 2.00s
+Time taken to freeze: 0.66s
+Time taken to find: 0.50s
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+char trie
+Time taken to insert: 1.84s
+Time taken to find: 0.81s
+string trie
+Time taken to insert: 2.00s
+Time taken to freeze: 0.69s
+Time taken to find: 0.48s
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+char trie
+Time taken to insert: 1.72s
+Time taken to find: 0.81s
+string trie
+Time taken to insert: 1.98s
+Time taken to freeze: 0.67s
+Time taken to find: 0.52s
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+char trie
+Time taken to insert: 1.72s
+Time taken to find: 0.80s
+string trie
+Time taken to insert: 1.98s
+Time taken to freeze: 0.67s
+Time taken to find: 0.50s
