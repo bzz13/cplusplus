@@ -22,7 +22,7 @@ public:
     trie(): root(new trie_node{})
     {}
 
-    void insert(string str)
+    void insert(const string& str)
     {
         auto tmp = root.get();
         for (auto c: str)
@@ -36,7 +36,7 @@ public:
         tmp->is_terminal = true;
     }
 
-    bool find(string str)
+    bool find(const string& str) const
     {
         auto tmp = root.get();
         for (auto c: str)
