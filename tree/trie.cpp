@@ -254,12 +254,14 @@ void t4(const std::vector<string>& v)
             cout << "FUCK: " << s << endl;
         }
     }
+    // cout << t.find("blablabla") << endl;
+    // cout << t.find("father") << endl;
     printf("Time taken to find: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
 }
 
 int main()
 {
     std::vector<string> words = prepare();
-    t3(words);
     t4(words);
+    t3(words);
 }
