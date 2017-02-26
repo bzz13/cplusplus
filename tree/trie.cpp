@@ -134,7 +134,7 @@ public:
             return false;
 
         auto tmp = root.get();
-        int i = 0;
+        size_t i = 0;
         while (i < str.size() && tmp)
         {
             auto c = str[i];
